@@ -1,0 +1,192 @@
+# Token Budget Memory Shader
+# Tracks and manages token usage across sessions
+
+shader:
+  id: token-budget
+  name: Token Budget Shader
+  version: "1.0.0"
+  layer: L1  # Hot memory - real-time tracking
+  persistence: session
+
+# ============================================================================
+# SCHEMA
+# ============================================================================
+
+schema:
+  budget:
+    type: object
+    properties:
+      total_allocated:
+        type: number
+        description: Total tokens allocated for session
+      total_used:
+        type: number
+        description: Total tokens consumed
+      remaining:
+        type: number
+        description: Tokens remaining
+      reserve:
+        type: number
+        description: Emergency reserve (10%)
+
+  breakdown:
+    type: object
+    properties:
+      by_agent:
+        type: map
+        key: string  # agent_id
+        value:
+          type: object
+          properties:
+            allocated: number
+            used: number
+            efficiency: number  # output_quality / tokens_used
+      by_phase:
+        type: map
+        key: string  # phase_name
+        value:
+          type: object
+          properties:
+            estimated: number
+            actual: number
+            variance: number
+
+  predictions:
+    type: object
+    properties:
+      estimated_remaining:
+        type: number
+        description: Estimated tokens needed to complete
+      completion_probability:
+        type: number
+        description: Probability of completing within budget
+      recommended_actions:
+        type: array
+        items: string
+
+  alerts:
+    type: array
+    items:
+      type: object
+      properties:
+        level: enum[info, warning, critical]
+        message: string
+        threshold_breached: number
+        timestamp: datetime
+
+# ============================================================================
+# OPERATIONS
+# ============================================================================
+
+operations:
+  initialize:
+    description: Initialize token budget
+    parameters:
+      total_budget: number
+      reserve_percentage: number
+    template: |
+      budget:
+        total_allocated: ${total_budget}
+        total_used: 0
+        remaining: ${total_budget}
+        reserve: ${total_budget * reserve_percentage / 100}
+      breakdown:
+        by_agent: {}
+        by_phase: {}
+      predictions:
+        estimated_remaining: ${total_budget}
+        completion_probability: 1.0
+        recommended_actions: []
+      alerts: []
+
+  track_usage:
+    description: Track token usage
+    parameters:
+      agent_id: string
+      phase: string
+      tokens_used: number
+    actions:
+      - set: budget.total_used += ${tokens_used}
+      - set: budget.remaining = budget.total_allocated - budget.total_used
+      - update: breakdown.by_agent[${agent_id}].used += ${tokens_used}
+      - update: breakdown.by_phase[${phase}].actual += ${tokens_used}
+      - call: check_thresholds
+      - call: update_predictions
+
+  allocate_to_agent:
+    description: Allocate tokens to agent
+    parameters:
+      agent_id: string
+      amount: number
+    actions:
+      - if: budget.remaining >= ${amount}
+        then:
+          - set: breakdown.by_agent[${agent_id}].allocated = ${amount}
+        else:
+          - call: alert level=warning message="Insufficient tokens for allocation"
+
+  check_thresholds:
+    description: Check budget thresholds
+    actions:
+      - if: budget.remaining < budget.reserve
+        then:
+          - append: alerts += {
+              level: critical,
+              message: "Budget in reserve zone",
+              threshold_breached: budget.reserve,
+              timestamp: ${now()}
+            }
+          - call: escalate_to_user
+      - if: budget.remaining / budget.total_allocated < 0.25
+        then:
+          - append: alerts += {
+              level: warning,
+              message: "Budget below 25%",
+              threshold_breached: 0.25,
+              timestamp: ${now()}
+            }
+
+  update_predictions:
+    description: Update completion predictions
+    actions:
+      - set: predictions.estimated_remaining = ${estimate_remaining_work()}
+      - set: predictions.completion_probability = min(1.0, budget.remaining / predictions.estimated_remaining)
+      - if: predictions.completion_probability < 0.8
+        then:
+          - append: predictions.recommended_actions += "Consider simplifying scope"
+          - append: predictions.recommended_actions += "Request budget increase"
+
+  get_efficiency_report:
+    description: Get agent efficiency report
+    returns: |
+      ${for agent_id, data in breakdown.by_agent:
+        agent: ${agent_id}
+        allocated: ${data.allocated}
+        used: ${data.used}
+        efficiency: ${data.efficiency}
+        utilization: ${data.used / data.allocated * 100}%
+      }
+
+# ============================================================================
+# THRESHOLDS
+# ============================================================================
+
+thresholds:
+  warning_level: 0.25      # 25% remaining
+  critical_level: 0.10     # 10% remaining (reserve)
+  efficiency_minimum: 0.6  # Minimum acceptable efficiency
+
+# ============================================================================
+# ESCALATION
+# ============================================================================
+
+escalation:
+  on_critical:
+    - pause_non_essential_agents
+    - notify_user
+    - request_budget_approval
+
+  on_exhausted:
+    - checkpoint_all_work
+    - generate_summary
+    - await_user_decision

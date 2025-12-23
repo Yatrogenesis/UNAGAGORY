@@ -1,0 +1,381 @@
+# GitHub Actions CI/CD Templates
+# Ready-to-use workflow templates
+
+templates:
+
+  # ===========================================================================
+  # BASIC CI WORKFLOW
+  # ===========================================================================
+
+  basic_ci:
+    id: github-basic-ci
+    description: Basic CI workflow with lint, test, build
+    file: .github/workflows/ci.yml
+
+    content: |
+      name: CI
+
+      on:
+        push:
+          branches: [main, develop]
+        pull_request:
+          branches: [main]
+
+      env:
+        NODE_VERSION: '20'
+
+      jobs:
+        lint:
+          name: Lint
+          runs-on: ubuntu-latest
+          steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                node-version: ${{ env.NODE_VERSION }}
+                cache: 'npm'
+            - run: npm ci
+            - run: npm run lint
+
+        test:
+          name: Test
+          runs-on: ubuntu-latest
+          needs: lint
+          steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                node-version: ${{ env.NODE_VERSION }}
+                cache: 'npm'
+            - run: npm ci
+            - run: npm test -- --coverage
+            - uses: codecov/codecov-action@v3
+              with:
+                files: coverage/lcov.info
+
+        build:
+          name: Build
+          runs-on: ubuntu-latest
+          needs: test
+          steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                node-version: ${{ env.NODE_VERSION }}
+                cache: 'npm'
+            - run: npm ci
+            - run: npm run build
+            - uses: actions/upload-artifact@v4
+              with:
+                name: build
+                path: dist/
+
+  # ===========================================================================
+  # FULL CI/CD WORKFLOW
+  # ===========================================================================
+
+  full_cicd:
+    id: github-full-cicd
+    description: Complete CI/CD with staging and production
+    file: .github/workflows/cicd.yml
+
+    content: |
+      name: CI/CD
+
+      on:
+        push:
+          branches: [main, develop]
+        pull_request:
+          branches: [main]
+        release:
+          types: [published]
+
+      env:
+        NODE_VERSION: '20'
+        REGISTRY: ghcr.io
+        IMAGE_NAME: ${{ github.repository }}
+
+      jobs:
+        # =====================================================================
+        # CI JOBS
+        # =====================================================================
+
+        lint:
+          name: Lint
+          runs-on: ubuntu-latest
+          steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                node-version: ${{ env.NODE_VERSION }}
+                cache: 'npm'
+            - run: npm ci
+            - run: npm run lint
+
+        test:
+          name: Test
+          runs-on: ubuntu-latest
+          steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                node-version: ${{ env.NODE_VERSION }}
+                cache: 'npm'
+            - run: npm ci
+            - run: npm test -- --coverage
+            - uses: codecov/codecov-action@v3
+
+        security:
+          name: Security Scan
+          runs-on: ubuntu-latest
+          steps:
+            - uses: actions/checkout@v4
+            - name: Run Snyk
+              uses: snyk/actions/node@master
+              env:
+                SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+              with:
+                args: --severity-threshold=high
+
+        build:
+          name: Build
+          runs-on: ubuntu-latest
+          needs: [lint, test, security]
+          steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                node-version: ${{ env.NODE_VERSION }}
+                cache: 'npm'
+            - run: npm ci
+            - run: npm run build
+            - uses: actions/upload-artifact@v4
+              with:
+                name: build
+                path: dist/
+                retention-days: 7
+
+        # =====================================================================
+        # DOCKER BUILD
+        # =====================================================================
+
+        docker:
+          name: Build Docker Image
+          runs-on: ubuntu-latest
+          needs: build
+          if: github.event_name != 'pull_request'
+          permissions:
+            contents: read
+            packages: write
+
+          steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/download-artifact@v4
+              with:
+                name: build
+                path: dist/
+
+            - uses: docker/login-action@v3
+              with:
+                registry: ${{ env.REGISTRY }}
+                username: ${{ github.actor }}
+                password: ${{ secrets.GITHUB_TOKEN }}
+
+            - uses: docker/metadata-action@v5
+              id: meta
+              with:
+                images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                tags: |
+                  type=ref,event=branch
+                  type=semver,pattern={{version}}
+                  type=sha
+
+            - uses: docker/build-push-action@v5
+              with:
+                context: .
+                push: true
+                tags: ${{ steps.meta.outputs.tags }}
+                labels: ${{ steps.meta.outputs.labels }}
+
+        # =====================================================================
+        # DEPLOY STAGING
+        # =====================================================================
+
+        deploy-staging:
+          name: Deploy to Staging
+          runs-on: ubuntu-latest
+          needs: docker
+          if: github.ref == 'refs/heads/develop'
+          environment:
+            name: staging
+            url: https://staging.example.com
+
+          steps:
+            - uses: actions/checkout@v4
+
+            - name: Deploy to Staging
+              run: |
+                # Add deployment commands here
+                echo "Deploying to staging..."
+
+            - name: Run Smoke Tests
+              run: |
+                # Add smoke test commands
+                echo "Running smoke tests..."
+
+        # =====================================================================
+        # DEPLOY PRODUCTION
+        # =====================================================================
+
+        deploy-production:
+          name: Deploy to Production
+          runs-on: ubuntu-latest
+          needs: docker
+          if: github.event_name == 'release'
+          environment:
+            name: production
+            url: https://example.com
+
+          steps:
+            - uses: actions/checkout@v4
+
+            - name: Deploy to Production
+              run: |
+                # Add deployment commands here
+                echo "Deploying to production..."
+
+            - name: Verify Deployment
+              run: |
+                # Add verification commands
+                echo "Verifying deployment..."
+
+  # ===========================================================================
+  # PR CHECKS WORKFLOW
+  # ===========================================================================
+
+  pr_checks:
+    id: github-pr-checks
+    description: Comprehensive PR checks
+    file: .github/workflows/pr.yml
+
+    content: |
+      name: PR Checks
+
+      on:
+        pull_request:
+          types: [opened, synchronize, reopened]
+
+      jobs:
+        pr-title:
+          name: PR Title Check
+          runs-on: ubuntu-latest
+          steps:
+            - uses: amannn/action-semantic-pull-request@v5
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        size-check:
+          name: PR Size Check
+          runs-on: ubuntu-latest
+          steps:
+            - uses: actions/checkout@v4
+            - uses: actions/github-script@v7
+              with:
+                script: |
+                  const { data: pr } = await github.rest.pulls.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: context.issue.number
+                  });
+
+                  const additions = pr.additions;
+                  const deletions = pr.deletions;
+                  const total = additions + deletions;
+
+                  let label = 'size/S';
+                  if (total > 500) label = 'size/XL';
+                  else if (total > 200) label = 'size/L';
+                  else if (total > 50) label = 'size/M';
+
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    labels: [label]
+                  });
+
+        lint-commit:
+          name: Lint Commits
+          runs-on: ubuntu-latest
+          steps:
+            - uses: actions/checkout@v4
+              with:
+                fetch-depth: 0
+            - uses: wagoid/commitlint-github-action@v5
+
+        tests:
+          name: Run Tests
+          runs-on: ubuntu-latest
+          steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                node-version: '20'
+                cache: 'npm'
+            - run: npm ci
+            - run: npm test -- --coverage
+            - name: Check Coverage Threshold
+              run: |
+                COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+                if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+                  echo "Coverage $COVERAGE% is below 80% threshold"
+                  exit 1
+                fi
+
+  # ===========================================================================
+  # RELEASE WORKFLOW
+  # ===========================================================================
+
+  release:
+    id: github-release
+    description: Automated release workflow
+    file: .github/workflows/release.yml
+
+    content: |
+      name: Release
+
+      on:
+        push:
+          branches: [main]
+
+      permissions:
+        contents: write
+        pull-requests: write
+
+      jobs:
+        release:
+          name: Release
+          runs-on: ubuntu-latest
+          steps:
+            - uses: google-github-actions/release-please-action@v4
+              id: release
+              with:
+                release-type: node
+
+            - uses: actions/checkout@v4
+              if: ${{ steps.release.outputs.release_created }}
+
+            - uses: actions/setup-node@v4
+              if: ${{ steps.release.outputs.release_created }}
+              with:
+                node-version: '20'
+                registry-url: 'https://registry.npmjs.org'
+
+            - run: npm ci
+              if: ${{ steps.release.outputs.release_created }}
+
+            - run: npm publish
+              if: ${{ steps.release.outputs.release_created }}
+              env:
+                NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

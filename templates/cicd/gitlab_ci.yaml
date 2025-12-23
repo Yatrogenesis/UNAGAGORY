@@ -1,0 +1,353 @@
+# GitLab CI Templates
+# Ready-to-use pipeline configurations
+
+templates:
+
+  # ===========================================================================
+  # BASIC PIPELINE
+  # ===========================================================================
+
+  basic_pipeline:
+    id: gitlab-basic
+    description: Basic GitLab CI pipeline
+    file: .gitlab-ci.yml
+
+    content: |
+      stages:
+        - lint
+        - test
+        - build
+        - deploy
+
+      variables:
+        NODE_VERSION: "20"
+
+      default:
+        image: node:${NODE_VERSION}
+        cache:
+          key: ${CI_COMMIT_REF_SLUG}
+          paths:
+            - node_modules/
+
+      # ===========================================================================
+      # LINT
+      # ===========================================================================
+
+      lint:
+        stage: lint
+        script:
+          - npm ci
+          - npm run lint
+        rules:
+          - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+          - if: $CI_COMMIT_BRANCH == "main"
+          - if: $CI_COMMIT_BRANCH == "develop"
+
+      # ===========================================================================
+      # TEST
+      # ===========================================================================
+
+      test:
+        stage: test
+        script:
+          - npm ci
+          - npm test -- --coverage
+        coverage: '/Lines\s*:\s*(\d+\.?\d*)%/'
+        artifacts:
+          reports:
+            coverage_report:
+              coverage_format: cobertura
+              path: coverage/cobertura-coverage.xml
+            junit: junit.xml
+        rules:
+          - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+          - if: $CI_COMMIT_BRANCH == "main"
+          - if: $CI_COMMIT_BRANCH == "develop"
+
+      # ===========================================================================
+      # BUILD
+      # ===========================================================================
+
+      build:
+        stage: build
+        script:
+          - npm ci
+          - npm run build
+        artifacts:
+          paths:
+            - dist/
+          expire_in: 1 week
+        rules:
+          - if: $CI_COMMIT_BRANCH == "main"
+          - if: $CI_COMMIT_BRANCH == "develop"
+
+      # ===========================================================================
+      # DEPLOY STAGING
+      # ===========================================================================
+
+      deploy_staging:
+        stage: deploy
+        script:
+          - echo "Deploying to staging..."
+          # Add deployment commands
+        environment:
+          name: staging
+          url: https://staging.example.com
+        rules:
+          - if: $CI_COMMIT_BRANCH == "develop"
+
+      # ===========================================================================
+      # DEPLOY PRODUCTION
+      # ===========================================================================
+
+      deploy_production:
+        stage: deploy
+        script:
+          - echo "Deploying to production..."
+          # Add deployment commands
+        environment:
+          name: production
+          url: https://example.com
+        rules:
+          - if: $CI_COMMIT_BRANCH == "main"
+        when: manual
+
+  # ===========================================================================
+  # FULL PIPELINE WITH DOCKER
+  # ===========================================================================
+
+  full_pipeline:
+    id: gitlab-full
+    description: Full GitLab CI/CD with Docker
+    file: .gitlab-ci.yml
+
+    content: |
+      stages:
+        - validate
+        - test
+        - security
+        - build
+        - deploy
+
+      variables:
+        NODE_VERSION: "20"
+        DOCKER_DRIVER: overlay2
+        DOCKER_TLS_CERTDIR: "/certs"
+
+      default:
+        image: node:${NODE_VERSION}
+
+      # ===========================================================================
+      # TEMPLATES
+      # ===========================================================================
+
+      .node-cache: &node-cache
+        cache:
+          key: ${CI_COMMIT_REF_SLUG}
+          paths:
+            - node_modules/
+            - .npm/
+
+      .docker-login: &docker-login
+        before_script:
+          - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+      # ===========================================================================
+      # VALIDATE STAGE
+      # ===========================================================================
+
+      lint:
+        stage: validate
+        <<: *node-cache
+        script:
+          - npm ci --cache .npm
+          - npm run lint
+        rules:
+          - if: $CI_MERGE_REQUEST_ID
+          - if: $CI_COMMIT_BRANCH
+
+      typecheck:
+        stage: validate
+        <<: *node-cache
+        script:
+          - npm ci --cache .npm
+          - npm run typecheck
+        rules:
+          - if: $CI_MERGE_REQUEST_ID
+          - if: $CI_COMMIT_BRANCH
+
+      # ===========================================================================
+      # TEST STAGE
+      # ===========================================================================
+
+      unit-tests:
+        stage: test
+        <<: *node-cache
+        script:
+          - npm ci --cache .npm
+          - npm run test:unit -- --coverage
+        coverage: '/Lines\s*:\s*(\d+\.?\d*)%/'
+        artifacts:
+          reports:
+            coverage_report:
+              coverage_format: cobertura
+              path: coverage/cobertura-coverage.xml
+            junit: junit.xml
+
+      integration-tests:
+        stage: test
+        <<: *node-cache
+        services:
+          - postgres:15
+          - redis:7
+        variables:
+          POSTGRES_DB: test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          DATABASE_URL: postgres://test:test@postgres:5432/test
+          REDIS_URL: redis://redis:6379
+        script:
+          - npm ci --cache .npm
+          - npm run test:integration
+        artifacts:
+          reports:
+            junit: junit-integration.xml
+
+      # ===========================================================================
+      # SECURITY STAGE
+      # ===========================================================================
+
+      dependency-scan:
+        stage: security
+        <<: *node-cache
+        script:
+          - npm ci --cache .npm
+          - npm audit --audit-level=high
+        allow_failure: true
+
+      sast:
+        stage: security
+        image: returntocorp/semgrep
+        script:
+          - semgrep ci --config=auto
+        allow_failure: true
+
+      secret-detection:
+        stage: security
+        image: trufflesecurity/trufflehog:latest
+        script:
+          - trufflehog filesystem . --fail
+        allow_failure: true
+
+      # ===========================================================================
+      # BUILD STAGE
+      # ===========================================================================
+
+      build-app:
+        stage: build
+        <<: *node-cache
+        script:
+          - npm ci --cache .npm
+          - npm run build
+        artifacts:
+          paths:
+            - dist/
+          expire_in: 1 week
+
+      build-docker:
+        stage: build
+        image: docker:24
+        services:
+          - docker:24-dind
+        <<: *docker-login
+        script:
+          - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
+          - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+        rules:
+          - if: $CI_COMMIT_BRANCH == "main"
+          - if: $CI_COMMIT_BRANCH == "develop"
+
+      # ===========================================================================
+      # DEPLOY STAGE
+      # ===========================================================================
+
+      deploy-staging:
+        stage: deploy
+        image: alpine/helm:latest
+        script:
+          - helm upgrade --install app ./helm
+              --namespace staging
+              --set image.tag=$CI_COMMIT_SHA
+        environment:
+          name: staging
+          url: https://staging.example.com
+        rules:
+          - if: $CI_COMMIT_BRANCH == "develop"
+
+      deploy-production:
+        stage: deploy
+        image: alpine/helm:latest
+        script:
+          - helm upgrade --install app ./helm
+              --namespace production
+              --set image.tag=$CI_COMMIT_SHA
+        environment:
+          name: production
+          url: https://example.com
+        rules:
+          - if: $CI_COMMIT_BRANCH == "main"
+        when: manual
+
+  # ===========================================================================
+  # MERGE REQUEST PIPELINE
+  # ===========================================================================
+
+  mr_pipeline:
+    id: gitlab-mr
+    description: Merge request specific pipeline
+    file: .gitlab-ci.yml
+
+    content: |
+      # Include in main gitlab-ci.yml
+      # include:
+      #   - local: '.gitlab/ci/mr.yml'
+
+      mr-lint:
+        stage: validate
+        script:
+          - npm ci
+          - npm run lint
+        rules:
+          - if: $CI_MERGE_REQUEST_ID
+
+      mr-test:
+        stage: test
+        script:
+          - npm ci
+          - npm test
+        coverage: '/Lines\s*:\s*(\d+\.?\d*)%/'
+        rules:
+          - if: $CI_MERGE_REQUEST_ID
+
+      mr-review:
+        stage: deploy
+        script:
+          - echo "Creating review environment..."
+          # Deploy to dynamic review environment
+        environment:
+          name: review/$CI_COMMIT_REF_SLUG
+          url: https://$CI_COMMIT_REF_SLUG.review.example.com
+          on_stop: stop-review
+        rules:
+          - if: $CI_MERGE_REQUEST_ID
+
+      stop-review:
+        stage: deploy
+        script:
+          - echo "Removing review environment..."
+        environment:
+          name: review/$CI_COMMIT_REF_SLUG
+          action: stop
+        rules:
+          - if: $CI_MERGE_REQUEST_ID
+            when: manual

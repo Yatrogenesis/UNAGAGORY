@@ -1,0 +1,270 @@
+# Codebase Index Memory Shader
+# Maintains searchable index of project codebase
+
+shader:
+  id: codebase-index
+  name: Codebase Index Shader
+  version: "1.0.0"
+  layer: L3  # Cold memory
+  persistence: permanent
+
+# ============================================================================
+# SCHEMA
+# ============================================================================
+
+schema:
+  files:
+    type: array
+    items:
+      type: object
+      properties:
+        path:
+          type: string
+        language:
+          type: string
+        size:
+          type: number
+        last_modified:
+          type: datetime
+        hash:
+          type: string
+        indexed_at:
+          type: datetime
+
+  symbols:
+    type: object
+    properties:
+      classes:
+        type: array
+        items:
+          type: object
+          properties:
+            name: string
+            file: string
+            line: number
+            extends: string
+            implements: array
+            methods: array
+            properties: array
+
+      functions:
+        type: array
+        items:
+          type: object
+          properties:
+            name: string
+            file: string
+            line: number
+            parameters: array
+            return_type: string
+            async: boolean
+            exported: boolean
+
+      interfaces:
+        type: array
+        items:
+          type: object
+          properties:
+            name: string
+            file: string
+            line: number
+            properties: array
+            methods: array
+
+      types:
+        type: array
+        items:
+          type: object
+          properties:
+            name: string
+            file: string
+            line: number
+            definition: string
+
+  dependencies:
+    type: object
+    properties:
+      external:
+        type: array
+        items:
+          type: object
+          properties:
+            name: string
+            version: string
+            dev: boolean
+            license: string
+
+      internal:
+        type: map
+        key: string  # file path
+        value:
+          type: object
+          properties:
+            imports: array
+            exports: array
+            imported_by: array
+
+  architecture:
+    type: object
+    properties:
+      layers:
+        type: array
+        items:
+          type: object
+          properties:
+            name: string
+            path_pattern: string
+            files: array
+
+      modules:
+        type: array
+        items:
+          type: object
+          properties:
+            name: string
+            path: string
+            purpose: string
+            dependencies: array
+
+  statistics:
+    type: object
+    properties:
+      total_files: number
+      total_lines: number
+      by_language:
+        type: map
+        key: string
+        value:
+          files: number
+          lines: number
+      complexity_average: number
+      test_coverage: number
+
+# ============================================================================
+# OPERATIONS
+# ============================================================================
+
+operations:
+  full_index:
+    description: Create full codebase index
+    parameters:
+      root_path: string
+      exclude_patterns: array
+    actions:
+      - call: scan_files path=${root_path} exclude=${exclude_patterns}
+      - call: extract_symbols
+      - call: build_dependency_graph
+      - call: detect_architecture
+      - call: calculate_statistics
+
+  incremental_update:
+    description: Update index for changed files
+    parameters:
+      changed_files: array
+    actions:
+      - for: file in ${changed_files}
+        do:
+          - call: reindex_file path=${file}
+          - call: update_dependencies file=${file}
+
+  search:
+    description: Search codebase
+    parameters:
+      query: string
+      type: enum[symbol, file, content, reference]
+      filters: object
+    returns: |
+      ${match type:
+        symbol: search_symbols(query, filters)
+        file: search_files(query, filters)
+        content: search_content(query, filters)
+        reference: find_references(query, filters)
+      }
+
+  find_usages:
+    description: Find all usages of a symbol
+    parameters:
+      symbol_name: string
+      symbol_type: string
+    returns: |
+      ${for file in files where contains_usage(file, symbol_name):
+        file: ${file.path}
+        usages: ${extract_usages(file, symbol_name)}
+      }
+
+  get_file_context:
+    description: Get context for a file
+    parameters:
+      file_path: string
+    returns: |
+      file: ${file_path}
+      language: ${files[file_path].language}
+      symbols: ${symbols_in_file(file_path)}
+      imports: ${dependencies.internal[file_path].imports}
+      imported_by: ${dependencies.internal[file_path].imported_by}
+      layer: ${detect_layer(file_path)}
+      module: ${detect_module(file_path)}
+
+# ============================================================================
+# INDEXING RULES
+# ============================================================================
+
+indexing:
+  languages:
+    typescript:
+      extensions: [.ts, .tsx]
+      parser: typescript-eslint
+      symbol_extractors:
+        - class_declarations
+        - function_declarations
+        - interface_declarations
+        - type_aliases
+        - variable_declarations
+
+    python:
+      extensions: [.py]
+      parser: ast
+      symbol_extractors:
+        - class_definitions
+        - function_definitions
+        - variable_assignments
+
+    rust:
+      extensions: [.rs]
+      parser: syn
+      symbol_extractors:
+        - struct_definitions
+        - impl_blocks
+        - function_definitions
+        - trait_definitions
+
+    go:
+      extensions: [.go]
+      parser: go/ast
+      symbol_extractors:
+        - type_declarations
+        - function_declarations
+        - interface_declarations
+
+  exclude_patterns:
+    - node_modules/
+    - __pycache__/
+    - target/
+    - dist/
+    - build/
+    - .git/
+    - "*.min.js"
+    - "*.map"
+
+# ============================================================================
+# STORAGE
+# ============================================================================
+
+storage:
+  format: json
+  location: .unagagory/memory/codebase_index.json
+  compression: true
+
+  incremental:
+    enabled: true
+    delta_location: .unagagory/memory/codebase_delta.json

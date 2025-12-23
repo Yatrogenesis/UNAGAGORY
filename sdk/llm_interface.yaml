@@ -1,0 +1,295 @@
+# LLM Interface SDK
+# Abstraction layer for different LLM providers
+
+sdk:
+  id: llm-interface
+  name: LLM Interface
+  version: "1.0.0"
+
+# ============================================================================
+# PROVIDER DEFINITIONS
+# ============================================================================
+
+providers:
+
+  claude:
+    name: Claude
+    provider: anthropic
+    models:
+      - id: claude-opus-4-5-20251101
+        name: Claude Opus 4.5
+        context_window: 200000
+        output_limit: 64000
+        best_for: [complex_reasoning, large_projects, architecture]
+      - id: claude-sonnet-4-20250514
+        name: Claude Sonnet 4
+        context_window: 200000
+        output_limit: 64000
+        best_for: [general_tasks, code_generation, balanced]
+      - id: claude-3-5-haiku-20241022
+        name: Claude 3.5 Haiku
+        context_window: 200000
+        output_limit: 8192
+        best_for: [fast_tasks, simple_queries, cost_efficient]
+
+    capabilities:
+      tool_use: true
+      vision: true
+      extended_thinking: true
+      streaming: true
+      batch: true
+
+    integration:
+      claude_code:
+        native: true
+        features:
+          - mcp_tools
+          - file_access
+          - bash_execution
+          - git_integration
+        config_path: ~/.claude.json
+
+  openai:
+    name: OpenAI
+    provider: openai
+    models:
+      - id: gpt-4o
+        name: GPT-4o
+        context_window: 128000
+        best_for: [general_tasks, multimodal]
+      - id: gpt-4o-mini
+        name: GPT-4o Mini
+        context_window: 128000
+        best_for: [cost_efficient, simple_tasks]
+      - id: o1
+        name: o1
+        context_window: 200000
+        best_for: [complex_reasoning, math, code]
+
+    capabilities:
+      tool_use: true
+      vision: true
+      streaming: true
+
+  ollama:
+    name: Ollama (Local)
+    provider: ollama
+    models:
+      - id: llama3.3:70b
+        name: Llama 3.3 70B
+        context_window: 128000
+        best_for: [local_processing, privacy]
+      - id: codellama:34b
+        name: Code Llama 34B
+        context_window: 16000
+        best_for: [code_generation, local]
+
+    capabilities:
+      tool_use: limited
+      vision: model_dependent
+      streaming: true
+
+# ============================================================================
+# UNIFIED INTERFACE
+# ============================================================================
+
+interface:
+
+  methods:
+
+    complete:
+      description: Generate completion from prompt
+      parameters:
+        messages:
+          type: array
+          required: true
+          description: Conversation messages
+        model:
+          type: string
+          required: false
+          description: Model to use (defaults to configured)
+        temperature:
+          type: float
+          required: false
+          default: 0.7
+        max_tokens:
+          type: integer
+          required: false
+        tools:
+          type: array
+          required: false
+          description: Tools available to the model
+        system:
+          type: string
+          required: false
+          description: System prompt
+
+    stream:
+      description: Stream completion
+      parameters:
+        # Same as complete
+        on_chunk:
+          type: callback
+          required: true
+          description: Callback for each chunk
+
+    batch:
+      description: Batch multiple requests
+      parameters:
+        requests:
+          type: array
+          required: true
+        parallel:
+          type: integer
+          default: 5
+
+# ============================================================================
+# MESSAGE FORMAT
+# ============================================================================
+
+message_format:
+  standard:
+    role: "user|assistant|system"
+    content: "string or content array"
+
+  with_tools:
+    role: "assistant"
+    content: "optional text"
+    tool_use:
+      id: "tool_use_id"
+      name: "tool_name"
+      input: {}
+
+  tool_result:
+    role: "user"
+    tool_result:
+      tool_use_id: "id"
+      content: "result"
+
+# ============================================================================
+# ADAPTER IMPLEMENTATIONS
+# ============================================================================
+
+adapters:
+
+  anthropic:
+    endpoint: https://api.anthropic.com/v1/messages
+    auth_header: x-api-key
+    message_format:
+      role_mapping:
+        system: separate_parameter
+        user: user
+        assistant: assistant
+      content_format:
+        text: { type: text, text: content }
+        image: { type: image, source: { type: base64, ... } }
+
+  openai:
+    endpoint: https://api.openai.com/v1/chat/completions
+    auth_header: Authorization Bearer
+    message_format:
+      role_mapping:
+        system: system
+        user: user
+        assistant: assistant
+
+  ollama:
+    endpoint: http://localhost:11434/api/chat
+    auth_header: none
+    message_format:
+      role_mapping:
+        system: system
+        user: user
+        assistant: assistant
+
+# ============================================================================
+# ERROR HANDLING
+# ============================================================================
+
+error_handling:
+
+  retry_policy:
+    max_retries: 3
+    backoff:
+      initial: 1000  # ms
+      multiplier: 2
+      max: 30000
+
+  error_types:
+    rate_limit:
+      action: retry_with_backoff
+      notify: budget_analyst
+
+    context_overflow:
+      action: summarize_and_retry
+      notify: memory_manager
+
+    authentication:
+      action: fail_immediately
+      notify: user
+
+    server_error:
+      action: retry_with_backoff
+
+# ============================================================================
+# TOKEN TRACKING
+# ============================================================================
+
+token_tracking:
+
+  counters:
+    - input_tokens
+    - output_tokens
+    - cache_creation_tokens
+    - cache_read_tokens
+
+  callbacks:
+    on_usage:
+      notify: budget_analyst
+      data:
+        - model
+        - tokens
+        - cost_estimate
+
+# ============================================================================
+# USAGE EXAMPLE
+# ============================================================================
+
+example: |
+  # Python pseudo-code
+
+  from unagagory.sdk import LLMInterface
+
+  # Initialize with provider
+  llm = LLMInterface(
+      provider="claude",
+      model="claude-opus-4-5-20251101",
+      api_key=os.environ["ANTHROPIC_API_KEY"]
+  )
+
+  # Simple completion
+  response = await llm.complete(
+      messages=[
+          {"role": "user", "content": "Explain recursion"}
+      ],
+      system="You are a helpful teacher"
+  )
+
+  # With tools
+  response = await llm.complete(
+      messages=conversation,
+      tools=[
+          {
+              "name": "search_codebase",
+              "description": "Search for code patterns",
+              "input_schema": {...}
+          }
+      ]
+  )
+
+  # Streaming
+  async for chunk in llm.stream(messages=conversation):
+      print(chunk.content, end="")
+
+  # Switch providers
+  llm.set_provider("openai", model="gpt-4o")

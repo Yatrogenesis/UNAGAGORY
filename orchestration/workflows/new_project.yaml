@@ -1,0 +1,503 @@
+# New Project Workflow
+# Complete workflow for starting a new project from scratch
+
+workflow:
+  id: new-project
+  name: New Project Creation
+  version: "1.0.0"
+
+  description: |
+    Complete workflow for creating a new software project from scratch.
+    Handles everything from requirements gathering to initial deployment.
+
+# ============================================================================
+# WORKFLOW DEFINITION
+# ============================================================================
+
+phases:
+
+  # ==========================================================================
+  # PHASE 1: DISCOVERY
+  # ==========================================================================
+  discovery:
+    name: Discovery & Requirements
+    parallel: false
+
+    steps:
+      - id: interpret_request
+        agent: PromptInterpreter
+        action: analyze_request
+        description: Analyze user request and extract requirements
+        inputs:
+          - user_request
+        outputs:
+          - interpreted_requirements
+          - clarification_questions
+        timeout: 300
+
+      - id: clarify_requirements
+        agent: PromptInterpreter
+        action: clarify
+        description: Get clarification on ambiguous requirements
+        condition: "clarification_questions.length > 0"
+        inputs:
+          - clarification_questions
+        outputs:
+          - clarified_requirements
+        requires_user: true
+
+      - id: finalize_scope
+        agent: ScopeAnalyzer
+        action: finalize_scope
+        description: Create final scope document
+        inputs:
+          - interpreted_requirements
+          - clarified_requirements
+        outputs:
+          - scope_document
+        timeout: 180
+
+    gates:
+      - name: scope_approval
+        type: user_approval
+        message: "Please review and approve the project scope"
+        document: scope_document
+
+  # ==========================================================================
+  # PHASE 2: ARCHITECTURE
+  # ==========================================================================
+  architecture:
+    name: Architecture Design
+    parallel: false
+    depends_on: [discovery]
+
+    steps:
+      - id: design_system
+        agent: SystemArchitect
+        action: design_architecture
+        description: Design overall system architecture
+        inputs:
+          - scope_document
+        outputs:
+          - architecture_document
+          - component_list
+          - tech_stack
+        timeout: 600
+
+      - id: design_database
+        agent: DatabaseArchitect
+        action: design_schema
+        description: Design database schema
+        inputs:
+          - architecture_document
+        outputs:
+          - database_schema
+          - migration_plan
+        timeout: 300
+
+      - id: design_api
+        agent: BackendArchitect
+        action: design_api
+        description: Design API contracts
+        inputs:
+          - architecture_document
+        outputs:
+          - api_specification
+          - endpoint_list
+        timeout: 300
+
+      - id: design_ui
+        agent: FrontendArchitect
+        action: design_ui
+        description: Design UI architecture
+        inputs:
+          - architecture_document
+        outputs:
+          - ui_architecture
+          - component_hierarchy
+        timeout: 300
+
+      - id: security_review
+        agent: SecurityArchitect
+        action: review_architecture
+        description: Review architecture for security
+        inputs:
+          - architecture_document
+          - api_specification
+        outputs:
+          - security_recommendations
+          - threat_model
+        timeout: 300
+
+    gates:
+      - name: architecture_approval
+        type: user_approval
+        message: "Please review the architecture design"
+        documents:
+          - architecture_document
+          - database_schema
+          - api_specification
+
+  # ==========================================================================
+  # PHASE 3: PROJECT SETUP
+  # ==========================================================================
+  setup:
+    name: Project Setup
+    parallel: false
+    depends_on: [architecture]
+
+    steps:
+      - id: create_structure
+        agent: EnvironmentPreparer
+        action: create_project
+        description: Create project directory structure
+        inputs:
+          - architecture_document
+          - tech_stack
+        outputs:
+          - project_path
+          - created_files
+        permission_level: 2
+        timeout: 120
+
+      - id: initialize_git
+        agent: EnvironmentPreparer
+        action: init_git
+        description: Initialize git repository
+        inputs:
+          - project_path
+        outputs:
+          - git_initialized
+        permission_level: 4
+        timeout: 60
+
+      - id: install_dependencies
+        agent: EnvironmentPreparer
+        action: install_deps
+        description: Install project dependencies
+        inputs:
+          - project_path
+          - tech_stack
+        outputs:
+          - dependencies_installed
+        permission_level: 4
+        timeout: 300
+
+      - id: setup_cicd
+        agent: CICDDesigner
+        action: create_pipeline
+        description: Set up CI/CD pipeline
+        inputs:
+          - project_path
+          - tech_stack
+        outputs:
+          - cicd_config
+        permission_level: 2
+        timeout: 180
+
+  # ==========================================================================
+  # PHASE 4: IMPLEMENTATION
+  # ==========================================================================
+  implementation:
+    name: Core Implementation
+    parallel: true
+    depends_on: [setup]
+
+    tracks:
+      - name: backend
+        steps:
+          - id: implement_models
+            agent: BackendBuilder
+            action: create_models
+            description: Implement data models
+            inputs:
+              - database_schema
+            outputs:
+              - model_files
+
+          - id: implement_api
+            agent: BackendBuilder
+            action: create_api
+            description: Implement API endpoints
+            inputs:
+              - api_specification
+              - model_files
+            outputs:
+              - api_files
+
+          - id: implement_services
+            agent: BackendBuilder
+            action: create_services
+            description: Implement business logic
+            inputs:
+              - architecture_document
+              - model_files
+            outputs:
+              - service_files
+
+      - name: frontend
+        steps:
+          - id: implement_components
+            agent: FrontendBuilder
+            action: create_components
+            description: Implement UI components
+            inputs:
+              - ui_architecture
+              - component_hierarchy
+            outputs:
+              - component_files
+
+          - id: implement_pages
+            agent: FrontendBuilder
+            action: create_pages
+            description: Implement pages
+            inputs:
+              - component_files
+              - ui_architecture
+            outputs:
+              - page_files
+
+          - id: implement_state
+            agent: FrontendBuilder
+            action: create_state
+            description: Implement state management
+            inputs:
+              - api_specification
+            outputs:
+              - state_files
+
+      - name: database
+        steps:
+          - id: create_migrations
+            agent: DatabaseBuilder
+            action: create_migrations
+            description: Create database migrations
+            inputs:
+              - database_schema
+            outputs:
+              - migration_files
+
+  # ==========================================================================
+  # PHASE 5: TESTING
+  # ==========================================================================
+  testing:
+    name: Testing
+    parallel: true
+    depends_on: [implementation]
+
+    tracks:
+      - name: unit_tests
+        steps:
+          - id: backend_tests
+            agent: UnitTester
+            action: create_tests
+            description: Create backend unit tests
+            inputs:
+              - api_files
+              - service_files
+            outputs:
+              - backend_test_files
+
+          - id: frontend_tests
+            agent: UnitTester
+            action: create_tests
+            description: Create frontend unit tests
+            inputs:
+              - component_files
+            outputs:
+              - frontend_test_files
+
+      - name: integration_tests
+        steps:
+          - id: api_tests
+            agent: IntegrationTester
+            action: create_tests
+            description: Create API integration tests
+            inputs:
+              - api_specification
+            outputs:
+              - integration_test_files
+
+      - name: run_tests
+        depends_on: [unit_tests, integration_tests]
+        steps:
+          - id: execute_tests
+            agent: UnitTester
+            action: run_all
+            description: Run all tests
+            inputs:
+              - backend_test_files
+              - frontend_test_files
+              - integration_test_files
+            outputs:
+              - test_results
+              - coverage_report
+            permission_level: 4
+
+    gates:
+      - name: test_coverage
+        type: threshold
+        metric: coverage
+        minimum: 80
+        message: "Code coverage must be at least 80%"
+
+  # ==========================================================================
+  # PHASE 6: REVIEW
+  # ==========================================================================
+  review:
+    name: Code Review & Quality
+    parallel: true
+    depends_on: [testing]
+
+    steps:
+      - id: code_review
+        agent: CodeReviewer
+        action: review_all
+        description: Review all generated code
+        inputs:
+          - api_files
+          - service_files
+          - component_files
+        outputs:
+          - review_report
+          - issues_list
+        timeout: 600
+
+      - id: security_scan
+        agent: SecuritySentinel
+        action: scan_all
+        description: Security scan of codebase
+        inputs:
+          - project_path
+        outputs:
+          - security_report
+        timeout: 300
+
+      - id: quality_check
+        agent: QualityController
+        action: assess
+        description: Overall quality assessment
+        inputs:
+          - review_report
+          - security_report
+          - test_results
+        outputs:
+          - quality_report
+          - recommendations
+        timeout: 180
+
+    gates:
+      - name: quality_approval
+        type: threshold
+        conditions:
+          - critical_issues: 0
+          - high_issues: 0
+          - security_critical: 0
+
+  # ==========================================================================
+  # PHASE 7: DOCUMENTATION
+  # ==========================================================================
+  documentation:
+    name: Documentation
+    parallel: true
+    depends_on: [review]
+
+    steps:
+      - id: api_docs
+        agent: APIDocWriter
+        action: generate
+        description: Generate API documentation
+        inputs:
+          - api_specification
+          - api_files
+        outputs:
+          - api_documentation
+
+      - id: readme
+        agent: ReadmeGenerator
+        action: generate
+        description: Generate README
+        inputs:
+          - architecture_document
+          - tech_stack
+        outputs:
+          - readme_file
+
+      - id: setup_guide
+        agent: TechnicalDocWriter
+        action: create_guide
+        description: Create setup guide
+        inputs:
+          - project_path
+          - tech_stack
+        outputs:
+          - setup_documentation
+
+  # ==========================================================================
+  # PHASE 8: DEPLOYMENT
+  # ==========================================================================
+  deployment:
+    name: Initial Deployment
+    parallel: false
+    depends_on: [documentation]
+
+    steps:
+      - id: deploy_staging
+        agent: EnvironmentPreparer
+        action: deploy
+        description: Deploy to staging environment
+        inputs:
+          - project_path
+          - cicd_config
+        outputs:
+          - staging_url
+        permission_level: 5
+        requires_user: true
+
+      - id: smoke_tests
+        agent: E2ETester
+        action: run_smoke
+        description: Run smoke tests on staging
+        inputs:
+          - staging_url
+        outputs:
+          - smoke_results
+        permission_level: 4
+
+    gates:
+      - name: staging_approval
+        type: user_approval
+        message: "Staging deployment ready for review"
+        url: staging_url
+
+# ============================================================================
+# WORKFLOW SETTINGS
+# ============================================================================
+
+settings:
+  checkpoint_after_phase: true
+  allow_phase_skip: false
+  max_retries_per_step: 3
+  default_timeout: 600
+
+  notifications:
+    on_phase_complete: true
+    on_error: true
+    on_approval_needed: true
+
+  error_handling:
+    on_step_failure: retry
+    on_phase_failure: pause
+    on_critical_failure: abort
+
+# ============================================================================
+# SUCCESS CRITERIA
+# ============================================================================
+
+success_criteria:
+  - All phases completed
+  - Test coverage >= 80%
+  - Zero critical/high issues
+  - Zero security vulnerabilities
+  - Documentation complete
+  - Staging deployed and verified

@@ -1,0 +1,378 @@
+# Documentation Prompt Templates
+# Templates for generating documentation
+
+templates:
+
+  # ===========================================================================
+  # README GENERATION
+  # ===========================================================================
+
+  generate_readme:
+    id: generate-readme
+    description: Generate project README
+
+    prompt: |
+      Generate a comprehensive README.md for this project:
+
+      ## Project Information
+      Name: ${project_name}
+      Description: ${description}
+      Tech Stack: ${tech_stack}
+
+      ## Project Structure
+      ${structure}
+
+      ## Features
+      ${features}
+
+      ## Include Sections
+      - Project title and badges
+      - Description
+      - Features
+      - Quick Start
+      - Prerequisites
+      - Installation
+      - Usage examples
+      - Configuration
+      - API documentation link
+      - Contributing guidelines link
+      - License
+
+      ## Tone
+      ${tone}
+
+      ## Output
+      Generate markdown with proper formatting, code blocks, and links.
+
+  # ===========================================================================
+  # API DOCUMENTATION
+  # ===========================================================================
+
+  generate_api_docs:
+    id: generate-api-docs
+    description: Generate API documentation
+
+    prompt: |
+      Generate API documentation for these endpoints:
+
+      ## API Specification
+      ${api_spec}
+
+      ## Documentation Format
+      ${format}
+
+      ## Include For Each Endpoint
+      - HTTP method and path
+      - Description
+      - Authentication requirements
+      - Request parameters (path, query, body)
+      - Request/response examples
+      - Error codes and messages
+      - Rate limiting info
+
+      ## Example Requests
+      Include curl and ${language} examples.
+
+      ## Output Format
+      ${output_format}
+
+  # ===========================================================================
+  # CODE COMMENTS
+  # ===========================================================================
+
+  generate_comments:
+    id: generate-comments
+    description: Generate code documentation comments
+
+    prompt: |
+      Generate documentation comments for this code:
+
+      ## Code
+      ```${language}
+      ${code}
+      ```
+
+      ## Documentation Style
+      ${style}
+
+      ## Include
+      - Function/method description
+      - Parameter descriptions
+      - Return value description
+      - Exceptions/errors thrown
+      - Usage examples
+      - Complexity notes if relevant
+
+      ## Output
+      Return the code with added documentation comments in ${style} format.
+
+  # ===========================================================================
+  # ARCHITECTURE DOCUMENTATION
+  # ===========================================================================
+
+  generate_architecture_doc:
+    id: generate-architecture-doc
+    description: Generate architecture documentation
+
+    prompt: |
+      Generate architecture documentation:
+
+      ## System Overview
+      ${system_overview}
+
+      ## Components
+      ${components}
+
+      ## Relationships
+      ${relationships}
+
+      ## Include Sections
+      - System context diagram (ASCII/Mermaid)
+      - Component overview
+      - Component details
+      - Data flow
+      - Integration points
+      - Deployment architecture
+      - Security architecture
+      - Key decisions (ADRs)
+
+      ## Diagram Format
+      ${diagram_format}
+
+      ## Output
+      Generate comprehensive markdown documentation.
+
+  # ===========================================================================
+  # ADR (ARCHITECTURE DECISION RECORD)
+  # ===========================================================================
+
+  generate_adr:
+    id: generate-adr
+    description: Generate Architecture Decision Record
+
+    prompt: |
+      Generate an ADR for this decision:
+
+      ## Decision Topic
+      ${topic}
+
+      ## Context
+      ${context}
+
+      ## Options Considered
+      ${options}
+
+      ## Decision Made
+      ${decision}
+
+      ## ADR Format
+      ```markdown
+      # ADR-${number}: ${title}
+
+      ## Status
+      ${status}
+
+      ## Context
+      What is the issue we're addressing?
+
+      ## Decision
+      What is our decision?
+
+      ## Options Considered
+
+      ### Option 1: ${option_1}
+      Pros:
+      Cons:
+
+      ### Option 2: ${option_2}
+      Pros:
+      Cons:
+
+      ## Consequences
+
+      ### Positive
+      - Benefits
+
+      ### Negative
+      - Trade-offs
+
+      ## References
+      - Related documents/links
+      ```
+
+  # ===========================================================================
+  # CHANGELOG
+  # ===========================================================================
+
+  generate_changelog:
+    id: generate-changelog
+    description: Generate changelog entry
+
+    prompt: |
+      Generate a changelog entry for this release:
+
+      ## Version
+      ${version}
+
+      ## Changes
+      ${changes}
+
+      ## Commits
+      ${commits}
+
+      ## Format
+      Follow Keep a Changelog format:
+
+      ```markdown
+      ## [${version}] - ${date}
+
+      ### Added
+      - New features
+
+      ### Changed
+      - Changes to existing functionality
+
+      ### Deprecated
+      - Features to be removed
+
+      ### Removed
+      - Removed features
+
+      ### Fixed
+      - Bug fixes
+
+      ### Security
+      - Security fixes
+      ```
+
+  # ===========================================================================
+  # USER GUIDE
+  # ===========================================================================
+
+  generate_user_guide:
+    id: generate-user-guide
+    description: Generate user guide section
+
+    prompt: |
+      Generate a user guide section:
+
+      ## Topic
+      ${topic}
+
+      ## Target Audience
+      ${audience}
+
+      ## Feature Description
+      ${feature}
+
+      ## Include
+      - Introduction/overview
+      - Prerequisites
+      - Step-by-step instructions
+      - Screenshots/diagrams placeholders
+      - Tips and best practices
+      - Common issues and solutions
+      - Related features
+
+      ## Tone
+      ${tone}
+
+      ## Output
+      Generate clear, user-friendly documentation.
+
+  # ===========================================================================
+  # TECHNICAL SPECIFICATION
+  # ===========================================================================
+
+  generate_tech_spec:
+    id: generate-tech-spec
+    description: Generate technical specification
+
+    prompt: |
+      Generate a technical specification:
+
+      ## Feature/System
+      ${feature_name}
+
+      ## Requirements
+      ${requirements}
+
+      ## Constraints
+      ${constraints}
+
+      ## Include Sections
+      - Overview
+      - Goals and non-goals
+      - Background
+      - Proposed solution
+        - Architecture
+        - Data model
+        - API design
+        - Security considerations
+      - Alternatives considered
+      - Implementation plan
+      - Testing strategy
+      - Rollout plan
+      - Monitoring and alerting
+      - Open questions
+
+      ## Output
+      Generate detailed technical specification in markdown.
+
+  # ===========================================================================
+  # RUNBOOK
+  # ===========================================================================
+
+  generate_runbook:
+    id: generate-runbook
+    description: Generate operations runbook
+
+    prompt: |
+      Generate an operations runbook:
+
+      ## Service/System
+      ${service_name}
+
+      ## Operations Covered
+      ${operations}
+
+      ## Include For Each Operation
+      - Overview
+      - Prerequisites
+      - Step-by-step procedure
+      - Verification steps
+      - Rollback procedure
+      - Troubleshooting
+      - Contacts/escalation
+
+      ## Format
+      ```markdown
+      # ${service_name} Runbook
+
+      ## Overview
+      Service description and purpose
+
+      ## Operations
+
+      ### ${operation_name}
+
+      #### When to Use
+      Conditions requiring this operation
+
+      #### Prerequisites
+      - Required access
+      - Required tools
+
+      #### Procedure
+      1. Step 1
+      2. Step 2
+
+      #### Verification
+      How to verify success
+
+      #### Rollback
+      How to undo if needed
+
+      #### Troubleshooting
+      Common issues and solutions
+      ```

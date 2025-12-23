@@ -1,0 +1,288 @@
+# Session State Memory Shader
+# Tracks current session state
+
+shader:
+  id: session-state
+  name: Session State Shader
+  version: "1.0.0"
+  layer: L2  # Warm memory
+  persistence: session
+
+# ============================================================================
+# SCHEMA
+# ============================================================================
+
+schema:
+  session:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Unique session identifier
+      started_at:
+        type: datetime
+      last_activity:
+        type: datetime
+      llm_provider:
+        type: string
+        description: Current LLM provider
+      environment:
+        type: object
+        properties:
+          working_directory: string
+          ide: string
+          tools_available: array
+
+  context:
+    type: object
+    properties:
+      current_task:
+        type: object
+        properties:
+          id: string
+          description: string
+          started_at: datetime
+          status: enum[pending, in_progress, blocked, completed]
+      active_workflow:
+        type: object
+        properties:
+          id: string
+          phase: string
+          step: string
+      active_agents:
+        type: array
+        items:
+          type: object
+          properties:
+            agent_id: string
+            agent_type: string
+            status: enum[idle, working, waiting, blocked]
+            current_action: string
+      pending_approvals:
+        type: array
+        items:
+          type: object
+          properties:
+            id: string
+            type: string
+            requested_at: datetime
+            agent: string
+            description: string
+
+  conversation:
+    type: object
+    properties:
+      messages:
+        type: array
+        items:
+          type: object
+          properties:
+            role: enum[user, assistant, system]
+            content: string
+            timestamp: datetime
+      summarized:
+        type: boolean
+        description: Whether old messages have been summarized
+      summary:
+        type: string
+        description: Summary of older conversation
+
+  checkpoints:
+    type: array
+    items:
+      type: object
+      properties:
+        id: string
+        name: string
+        timestamp: datetime
+        state_hash: string
+        description: string
+
+  metrics:
+    type: object
+    properties:
+      tokens_used:
+        type: number
+      api_calls:
+        type: number
+      files_created:
+        type: number
+      files_modified:
+        type: number
+      errors_encountered:
+        type: number
+      duration_seconds:
+        type: number
+
+# ============================================================================
+# OPERATIONS
+# ============================================================================
+
+operations:
+  start_session:
+    description: Initialize new session
+    parameters:
+      llm_provider: string
+      working_directory: string
+    template: |
+      session:
+        id: ${generate_uuid()}
+        started_at: ${now()}
+        last_activity: ${now()}
+        llm_provider: ${llm_provider}
+        environment:
+          working_directory: ${working_directory}
+          ide: ${detect_ide()}
+          tools_available: ${detect_tools()}
+      context:
+        current_task: null
+        active_workflow: null
+        active_agents: []
+        pending_approvals: []
+      conversation:
+        messages: []
+        summarized: false
+        summary: ""
+      checkpoints: []
+      metrics:
+        tokens_used: 0
+        api_calls: 0
+        files_created: 0
+        files_modified: 0
+        errors_encountered: 0
+        duration_seconds: 0
+
+  update_activity:
+    description: Update last activity timestamp
+    actions:
+      - set: session.last_activity = ${now()}
+      - set: metrics.duration_seconds = ${now()} - session.started_at
+
+  set_current_task:
+    description: Set current task
+    parameters:
+      task_id: string
+      description: string
+    actions:
+      - set: context.current_task = {
+          id: ${task_id},
+          description: ${description},
+          started_at: ${now()},
+          status: in_progress
+        }
+      - call: update_activity
+
+  complete_current_task:
+    description: Mark current task as complete
+    actions:
+      - set: context.current_task.status = completed
+      - call: update_activity
+
+  add_message:
+    description: Add message to conversation
+    parameters:
+      role: string
+      content: string
+    actions:
+      - append: conversation.messages += {
+          role: ${role},
+          content: ${content},
+          timestamp: ${now()}
+        }
+      - if: count(conversation.messages) > 50
+        then:
+          - call: summarize_conversation
+
+  summarize_conversation:
+    description: Summarize old conversation messages
+    actions:
+      - set: old_messages = conversation.messages[0:40]
+      - set: conversation.summary = ${summarize(old_messages)}
+      - set: conversation.messages = conversation.messages[40:]
+      - set: conversation.summarized = true
+
+  create_checkpoint:
+    description: Create session checkpoint
+    parameters:
+      name: string
+      description: string
+    actions:
+      - append: checkpoints += {
+          id: ${generate_uuid()},
+          name: ${name},
+          timestamp: ${now()},
+          state_hash: ${hash_state()},
+          description: ${description}
+        }
+
+  register_agent:
+    description: Register active agent
+    parameters:
+      agent_id: string
+      agent_type: string
+    actions:
+      - append: context.active_agents += {
+          agent_id: ${agent_id},
+          agent_type: ${agent_type},
+          status: idle,
+          current_action: null
+        }
+
+  update_agent_status:
+    description: Update agent status
+    parameters:
+      agent_id: string
+      status: string
+      action: string
+    actions:
+      - find: agent in context.active_agents where agent.agent_id == ${agent_id}
+      - set: agent.status = ${status}
+      - set: agent.current_action = ${action}
+
+  increment_metric:
+    description: Increment a metric
+    parameters:
+      metric: string
+      amount: number
+    actions:
+      - set: metrics.${metric} += ${amount}
+
+# ============================================================================
+# STORAGE
+# ============================================================================
+
+storage:
+  format: json
+  location: .unagagory/sessions/${session.id}.json
+  auto_save: true
+  save_interval: 60  # seconds
+
+# ============================================================================
+# RECOVERY
+# ============================================================================
+
+recovery:
+  enabled: true
+  on_crash:
+    - load_latest_checkpoint
+    - restore_active_agents
+    - notify_user
+
+  on_resume:
+    - validate_state
+    - update_activity
+    - show_summary
+
+# ============================================================================
+# CLEANUP
+# ============================================================================
+
+cleanup:
+  on_session_end:
+    - save_final_state
+    - archive_if_project_complete
+    - clear_temp_files
+
+  retention:
+    completed_sessions: 30  # days
+    failed_sessions: 7  # days

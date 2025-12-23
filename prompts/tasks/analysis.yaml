@@ -1,0 +1,363 @@
+# Analysis Prompt Templates
+# Templates for code analysis tasks
+
+templates:
+
+  # ===========================================================================
+  # CODE REVIEW
+  # ===========================================================================
+
+  code_review:
+    id: code-review
+    description: Review code for quality and issues
+
+    prompt: |
+      Review the following code for quality, correctness, and best practices:
+
+      ## Code to Review
+      ```${language}
+      ${code}
+      ```
+
+      ## Context
+      ${context}
+
+      ## Focus Areas
+      ${focus_areas}
+
+      ## Review Checklist
+      - [ ] Logic correctness
+      - [ ] Error handling
+      - [ ] Security vulnerabilities
+      - [ ] Performance issues
+      - [ ] Code style/conventions
+      - [ ] Documentation
+      - [ ] Test coverage
+      - [ ] Maintainability
+
+      ## Output Format
+      Provide findings in this format:
+      ```yaml
+      review:
+        summary: Brief overall assessment
+        score: 1-10
+        issues:
+          - severity: critical|high|medium|low
+            line: line_number
+            issue: description
+            suggestion: how to fix
+        positive:
+          - Good practices observed
+        recommendations:
+          - Improvement suggestions
+      ```
+
+  # ===========================================================================
+  # SECURITY ANALYSIS
+  # ===========================================================================
+
+  security_analysis:
+    id: security-analysis
+    description: Analyze code for security vulnerabilities
+
+    prompt: |
+      Perform a security analysis of the following code:
+
+      ## Code
+      ```${language}
+      ${code}
+      ```
+
+      ## Context
+      ${context}
+
+      ## Security Focus
+      Check for:
+      - SQL Injection
+      - XSS (Cross-Site Scripting)
+      - CSRF (Cross-Site Request Forgery)
+      - Command Injection
+      - Path Traversal
+      - Insecure Deserialization
+      - Sensitive Data Exposure
+      - Authentication Issues
+      - Authorization Issues
+      - Cryptographic Failures
+
+      ## Output Format
+      ```yaml
+      security_report:
+        risk_level: critical|high|medium|low|safe
+        vulnerabilities:
+          - id: VULN-001
+            type: vulnerability_type
+            severity: critical|high|medium|low
+            location: file:line
+            description: What the issue is
+            impact: What could happen
+            fix: How to remediate
+            references:
+              - CWE/CVE references
+        recommendations:
+          - Priority security improvements
+        compliance:
+          owasp_top_10: issues_found
+      ```
+
+  # ===========================================================================
+  # PERFORMANCE ANALYSIS
+  # ===========================================================================
+
+  performance_analysis:
+    id: performance-analysis
+    description: Analyze code for performance issues
+
+    prompt: |
+      Analyze the following code for performance issues:
+
+      ## Code
+      ```${language}
+      ${code}
+      ```
+
+      ## Context
+      ${context}
+
+      ## Performance Focus
+      Check for:
+      - Time complexity issues
+      - Space complexity issues
+      - N+1 queries
+      - Unnecessary iterations
+      - Memory leaks
+      - Blocking operations
+      - Missing caching
+      - Inefficient algorithms
+      - Resource exhaustion
+
+      ## Output Format
+      ```yaml
+      performance_report:
+        overall_assessment: excellent|good|needs_improvement|poor
+        issues:
+          - id: PERF-001
+            type: issue_type
+            severity: critical|high|medium|low
+            location: file:line
+            current_complexity: O(?)
+            description: What the issue is
+            impact: Performance impact
+            optimization:
+              approach: How to fix
+              expected_improvement: improvement_estimate
+        recommendations:
+          - Priority optimizations
+        benchmarks:
+          suggested_tests: benchmark suggestions
+      ```
+
+  # ===========================================================================
+  # ARCHITECTURE ANALYSIS
+  # ===========================================================================
+
+  architecture_analysis:
+    id: architecture-analysis
+    description: Analyze codebase architecture
+
+    prompt: |
+      Analyze the architecture of this codebase:
+
+      ## Codebase Structure
+      ${structure}
+
+      ## Key Files
+      ${key_files}
+
+      ## Analysis Focus
+      - Component organization
+      - Dependency management
+      - Separation of concerns
+      - Design patterns used
+      - Scalability potential
+      - Maintainability
+      - Testability
+
+      ## Output Format
+      ```yaml
+      architecture_report:
+        pattern: detected_pattern
+        strengths:
+          - Positive aspects
+        weaknesses:
+          - Areas needing improvement
+        components:
+          - name: component_name
+            purpose: what_it_does
+            dependencies: [deps]
+            quality: assessment
+        recommendations:
+          - Architectural improvements
+        risks:
+          - Technical debt items
+      ```
+
+  # ===========================================================================
+  # DEPENDENCY ANALYSIS
+  # ===========================================================================
+
+  dependency_analysis:
+    id: dependency-analysis
+    description: Analyze project dependencies
+
+    prompt: |
+      Analyze the dependencies of this project:
+
+      ## Package File
+      ```${format}
+      ${package_content}
+      ```
+
+      ## Analysis Focus
+      - Security vulnerabilities
+      - Outdated packages
+      - License compatibility
+      - Bundle size impact
+      - Maintenance status
+      - Redundant dependencies
+
+      ## Output Format
+      ```yaml
+      dependency_report:
+        total_dependencies: count
+        direct: count
+        transitive: count
+
+        security:
+          critical: count
+          high: count
+          issues:
+            - package: name
+              version: current
+              vulnerability: CVE
+              fix: version
+
+        outdated:
+          - package: name
+            current: version
+            latest: version
+            breaking: boolean
+
+        licenses:
+          compatible: count
+          warning: count
+          issues:
+            - package: name
+              license: license
+
+        recommendations:
+          - Update priorities
+          - Removal candidates
+          - Alternative suggestions
+      ```
+
+  # ===========================================================================
+  # TEST COVERAGE ANALYSIS
+  # ===========================================================================
+
+  coverage_analysis:
+    id: coverage-analysis
+    description: Analyze test coverage gaps
+
+    prompt: |
+      Analyze test coverage for this code:
+
+      ## Source Code
+      ```${language}
+      ${source_code}
+      ```
+
+      ## Existing Tests
+      ```${language}
+      ${test_code}
+      ```
+
+      ## Coverage Report
+      ${coverage_report}
+
+      ## Analysis Focus
+      - Uncovered lines/branches
+      - Missing edge cases
+      - Untested error paths
+      - Integration gaps
+
+      ## Output Format
+      ```yaml
+      coverage_analysis:
+        current_coverage:
+          line: percentage
+          branch: percentage
+          function: percentage
+
+        gaps:
+          - location: file:line
+            type: line|branch|function
+            reason: why_untested
+            risk: risk_level
+            suggested_test: test_description
+
+        recommendations:
+          - Priority tests to add
+          - Test strategy improvements
+
+        target_coverage:
+          achievable: percentage
+          effort: estimate
+      ```
+
+  # ===========================================================================
+  # COMPLEXITY ANALYSIS
+  # ===========================================================================
+
+  complexity_analysis:
+    id: complexity-analysis
+    description: Analyze code complexity
+
+    prompt: |
+      Analyze the complexity of this code:
+
+      ## Code
+      ```${language}
+      ${code}
+      ```
+
+      ## Metrics to Calculate
+      - Cyclomatic complexity
+      - Cognitive complexity
+      - Lines of code
+      - Nesting depth
+      - Parameter count
+
+      ## Output Format
+      ```yaml
+      complexity_report:
+        summary:
+          total_lines: count
+          average_complexity: value
+          max_complexity: value
+
+        functions:
+          - name: function_name
+            location: file:line
+            cyclomatic: value
+            cognitive: value
+            loc: lines
+            max_nesting: depth
+            parameters: count
+            assessment: simple|moderate|complex|very_complex
+
+        hotspots:
+          - High complexity areas
+
+        recommendations:
+          - Refactoring suggestions
+      ```

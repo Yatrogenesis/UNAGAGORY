@@ -1,0 +1,329 @@
+# Code Generation Prompt Templates
+# Templates for generating various types of code
+
+templates:
+
+  # ===========================================================================
+  # FUNCTION GENERATION
+  # ===========================================================================
+
+  generate_function:
+    id: generate-function
+    description: Generate a single function
+
+    prompt: |
+      Generate a ${language} function with the following specifications:
+
+      ## Function Name
+      ${function_name}
+
+      ## Purpose
+      ${purpose}
+
+      ## Parameters
+      ${parameters}
+
+      ## Return Value
+      ${return_type}: ${return_description}
+
+      ## Requirements
+      ${requirements}
+
+      ## Constraints
+      ${constraints}
+
+      ## Examples
+      ${examples}
+
+      ## Output Requirements
+      - Include type annotations/hints
+      - Include docstring/JSDoc
+      - Include error handling
+      - Make it testable
+      - Follow ${language} conventions
+
+  # ===========================================================================
+  # CLASS GENERATION
+  # ===========================================================================
+
+  generate_class:
+    id: generate-class
+    description: Generate a class definition
+
+    prompt: |
+      Generate a ${language} class with the following specifications:
+
+      ## Class Name
+      ${class_name}
+
+      ## Purpose
+      ${purpose}
+
+      ## Properties
+      ${properties}
+
+      ## Methods
+      ${methods}
+
+      ## Inheritance
+      Extends: ${extends}
+      Implements: ${implements}
+
+      ## Patterns
+      ${patterns}
+
+      ## Output Requirements
+      - Include type annotations
+      - Include documentation
+      - Implement proper encapsulation
+      - Follow SOLID principles
+      - Make it testable
+
+  # ===========================================================================
+  # API ENDPOINT
+  # ===========================================================================
+
+  generate_api_endpoint:
+    id: generate-api-endpoint
+    description: Generate REST API endpoint
+
+    prompt: |
+      Generate a ${framework} API endpoint:
+
+      ## Endpoint
+      ${method} ${path}
+
+      ## Description
+      ${description}
+
+      ## Request
+      Headers: ${request_headers}
+      Query Params: ${query_params}
+      Body: ${request_body}
+
+      ## Response
+      Success (${success_code}): ${success_response}
+      Error Codes: ${error_codes}
+
+      ## Authentication
+      ${authentication}
+
+      ## Validation
+      ${validation_rules}
+
+      ## Output Requirements
+      - Include input validation
+      - Include error handling
+      - Include authentication check
+      - Follow REST conventions
+      - Include OpenAPI comments
+
+  # ===========================================================================
+  # DATABASE MODEL
+  # ===========================================================================
+
+  generate_model:
+    id: generate-model
+    description: Generate database model/entity
+
+    prompt: |
+      Generate a ${orm} model for ${language}:
+
+      ## Model Name
+      ${model_name}
+
+      ## Table Name
+      ${table_name}
+
+      ## Fields
+      ${fields}
+
+      ## Relationships
+      ${relationships}
+
+      ## Indexes
+      ${indexes}
+
+      ## Validations
+      ${validations}
+
+      ## Output Requirements
+      - Include all field types
+      - Include constraints
+      - Include relationships
+      - Include validation
+      - Include timestamps if needed
+
+  # ===========================================================================
+  # REACT COMPONENT
+  # ===========================================================================
+
+  generate_react_component:
+    id: generate-react-component
+    description: Generate React component
+
+    prompt: |
+      Generate a React ${component_type} component:
+
+      ## Component Name
+      ${component_name}
+
+      ## Purpose
+      ${purpose}
+
+      ## Props
+      ${props}
+
+      ## State
+      ${state}
+
+      ## Events
+      ${events}
+
+      ## Styling
+      Approach: ${styling_approach}
+      Requirements: ${styling_requirements}
+
+      ## Accessibility
+      ${accessibility_requirements}
+
+      ## Output Requirements
+      - Use TypeScript
+      - Include prop types
+      - Include unit tests
+      - Follow component patterns
+      - Ensure accessibility
+
+  # ===========================================================================
+  # SERVICE CLASS
+  # ===========================================================================
+
+  generate_service:
+    id: generate-service
+    description: Generate service/business logic class
+
+    prompt: |
+      Generate a ${language} service class:
+
+      ## Service Name
+      ${service_name}
+
+      ## Purpose
+      ${purpose}
+
+      ## Dependencies
+      ${dependencies}
+
+      ## Methods
+      ${methods}
+
+      ## Error Handling
+      ${error_handling}
+
+      ## Transactions
+      ${transaction_requirements}
+
+      ## Output Requirements
+      - Follow dependency injection
+      - Include proper error handling
+      - Include logging
+      - Make it testable
+      - Follow single responsibility
+
+  # ===========================================================================
+  # UNIT TEST
+  # ===========================================================================
+
+  generate_unit_test:
+    id: generate-unit-test
+    description: Generate unit tests
+
+    prompt: |
+      Generate ${framework} unit tests for:
+
+      ## Target
+      ${target_file}
+
+      ## Functions/Methods to Test
+      ${functions}
+
+      ## Test Cases
+      ${test_cases}
+
+      ## Mocking Requirements
+      ${mocking}
+
+      ## Coverage Goals
+      - Line coverage: ${line_coverage}%
+      - Branch coverage: ${branch_coverage}%
+
+      ## Output Requirements
+      - Follow AAA pattern
+      - Include edge cases
+      - Test error paths
+      - Use meaningful names
+      - Include setup/teardown
+
+  # ===========================================================================
+  # MIGRATION
+  # ===========================================================================
+
+  generate_migration:
+    id: generate-migration
+    description: Generate database migration
+
+    prompt: |
+      Generate a ${orm} migration:
+
+      ## Migration Name
+      ${migration_name}
+
+      ## Changes
+      ${changes}
+
+      ## Up Migration
+      ${up_description}
+
+      ## Down Migration
+      ${down_description}
+
+      ## Data Migration
+      ${data_migration}
+
+      ## Output Requirements
+      - Make it reversible
+      - Handle existing data
+      - Include constraints
+      - Follow naming conventions
+
+  # ===========================================================================
+  # CONFIGURATION
+  # ===========================================================================
+
+  generate_config:
+    id: generate-config
+    description: Generate configuration file
+
+    prompt: |
+      Generate a ${config_type} configuration:
+
+      ## Purpose
+      ${purpose}
+
+      ## Environment
+      ${environment}
+
+      ## Settings
+      ${settings}
+
+      ## Secrets Handling
+      ${secrets_handling}
+
+      ## Validation
+      ${validation}
+
+      ## Output Requirements
+      - Include comments/documentation
+      - Use environment variables for secrets
+      - Include sensible defaults
+      - Follow 12-factor app principles

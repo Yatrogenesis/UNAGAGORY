@@ -1,0 +1,470 @@
+# UNAGAGORY Configuration
+# UNified AGnostic AGent ORchestrator Yatrogenesis
+# Version: 1.0.0
+
+version: "1.0.0"
+name: "UNAGAGORY"
+
+# ============================================================================
+# LLM CONFIGURATION
+# ============================================================================
+
+llm:
+  primary: claude-code
+  fallback:
+    - claude-api
+    - openai-gpt4
+    - ollama-local
+
+  providers:
+    claude-code:
+      type: claude-code
+      model: claude-sonnet-4-20250514
+      max_tokens: 64000
+      tools_enabled: true
+      mcp_enabled: true
+
+    claude-api:
+      type: anthropic
+      model: claude-sonnet-4-20250514
+      max_tokens: 8192
+      api_key_env: ANTHROPIC_API_KEY
+
+    openai-gpt4:
+      type: openai
+      model: gpt-4-turbo
+      max_tokens: 4096
+      api_key_env: OPENAI_API_KEY
+
+    ollama-local:
+      type: ollama
+      model: llama3:70b
+      endpoint: http://localhost:11434
+
+# ============================================================================
+# AGENT CONFIGURATION
+# ============================================================================
+
+agents:
+  auto_spawn: true
+  max_concurrent: 10
+  default_timeout: 300  # seconds
+
+  tiers:
+    - name: meta-orchestration
+      agents:
+        - MasterOrchestrator
+        - OrchestratorOfOrchestrators
+        - InterLLMOrchestrator
+
+    - name: interpreters
+      agents:
+        - PromptInterpreter
+        - ScopeAnalyzer
+        - RequirementsExtractor
+        - ConstraintIdentifier
+
+    - name: architects
+      agents:
+        - SystemArchitect
+        - FrontendArchitect
+        - BackendArchitect
+        - DatabaseArchitect
+        - SecurityArchitect
+        - CloudArchitect
+        - ArchitectureAdvisor
+
+    - name: builders
+      agents:
+        - CodeGenerator
+        - FrontendBuilder
+        - BackendBuilder
+        - DatabaseBuilder
+        - LibraryCreator
+        - IntegrationBuilder
+
+    - name: quality
+      agents:
+        - CodeReviewer
+        - PRReviewer
+        - Linter
+        - Refactorer
+        - QualityController
+        - ComplianceVerifier
+
+    - name: testers
+      agents:
+        - UnitTester
+        - IntegrationTester
+        - E2ETester
+        - PerformanceTester
+        - SecurityTester
+        - TestReporter
+
+    - name: infrastructure
+      agents:
+        - CICDDesigner
+        - CICDMaintainer
+        - EnvironmentPreparer
+        - WorkspaceManager
+        - ContainerArchitect
+
+    - name: documentation
+      agents:
+        - TechnicalDocWriter
+        - APIDocWriter
+        - UserManualWriter
+        - DesignDocWriter
+        - ReadmeGenerator
+
+    - name: security
+      agents:
+        - SecuritySentinel
+        - GuardrailReviewer
+        - LicenseManager
+        - PermissionManager
+        - AuditLogger
+
+    - name: analytics
+      agents:
+        - MetricsCreator
+        - MetricsCollector
+        - BudgetAnalyst
+        - ProgressTracker
+        - PerformanceAnalyzer
+
+    - name: research
+      agents:
+        - Researcher
+        - OpenSourceFinder
+        - PatternAnalyzer
+        - TechStackAdvisor
+
+# ============================================================================
+# MEMORY CONFIGURATION
+# ============================================================================
+
+memory:
+  enabled: true
+  backend: sqlite  # file, sqlite, redis, vector-db
+
+  persistence:
+    project_context: permanent
+    session_state: session
+    agent_memory: permanent
+    code_knowledge: permanent
+    conversation_history: 30_days
+
+  locations:
+    base: .unagagory/memory
+    sessions: .unagagory/sessions
+    indexes: .unagagory/memory/indexes
+
+  shaders:
+    - name: project_context
+      format: yaml
+      auto_save: true
+      save_interval: 60  # seconds
+
+    - name: code_index
+      format: sqlite
+      auto_index: true
+      index_patterns:
+        - "**/*.ts"
+        - "**/*.js"
+        - "**/*.py"
+        - "**/*.rs"
+        - "**/*.go"
+        - "**/*.java"
+
+    - name: conversation
+      format: jsonl
+      max_size: 100MB
+      rotation: true
+
+# ============================================================================
+# PERMISSION CONFIGURATION
+# ============================================================================
+
+permissions:
+  levels:
+    0: { name: read, auto_approve: true }
+    1: { name: suggest, auto_approve: true }
+    2: { name: create, auto_approve: first_use }
+    3: { name: modify, auto_approve: first_use }
+    4: { name: execute, auto_approve: never }
+    5: { name: deploy, auto_approve: never }
+    6: { name: delete, auto_approve: never }
+    7: { name: admin, auto_approve: never }
+
+  escalation:
+    max_retries: 3
+    timeout: 300  # seconds
+    fallback: pause
+
+  guardrails:
+    - no_secret_exposure
+    - no_destructive_commands
+    - no_unauthorized_network
+    - no_production_without_approval
+
+# ============================================================================
+# ORCHESTRATION CONFIGURATION
+# ============================================================================
+
+orchestration:
+  workflows_dir: orchestration/workflows
+  pipelines_dir: orchestration/pipelines
+
+  execution:
+    parallel_enabled: true
+    max_parallel: 5
+    retry_on_failure: true
+    max_retries: 3
+
+  checkpoints:
+    enabled: true
+    interval: 300  # seconds
+    location: .unagagory/checkpoints
+
+  progress:
+    tracking: true
+    reporting_interval: 60  # seconds
+    notify_on_milestone: true
+
+# ============================================================================
+# TOOL CONFIGURATION
+# ============================================================================
+
+tools:
+  linters:
+    typescript: eslint
+    javascript: eslint
+    python: ruff
+    rust: clippy
+    go: golangci-lint
+
+  formatters:
+    typescript: prettier
+    javascript: prettier
+    python: black
+    rust: rustfmt
+    go: gofmt
+
+  analyzers:
+    security: semgrep
+    complexity: sonarqube
+    dependencies: dependabot
+
+# ============================================================================
+# INTEGRATION CONFIGURATION
+# ============================================================================
+
+integrations:
+  ide:
+    - vscode
+    - cursor
+    - windsurf
+    - jetbrains
+    - vim
+
+  vcs:
+    - git
+    - github
+    - gitlab
+    - bitbucket
+
+  cloud:
+    - aws
+    - gcp
+    - azure
+    - vercel
+    - netlify
+
+  databases:
+    - postgresql
+    - mysql
+    - mongodb
+    - redis
+    - sqlite
+
+# ============================================================================
+# PROJECT TEMPLATES
+# ============================================================================
+
+templates:
+  default: fullstack
+
+  available:
+    - name: fullstack
+      stack: [react, node, postgres]
+      description: Full-stack web application
+
+    - name: api
+      stack: [fastapi, postgres]
+      description: REST/GraphQL API server
+
+    - name: frontend
+      stack: [react, typescript]
+      description: Frontend SPA
+
+    - name: backend
+      stack: [rust, postgres]
+      description: High-performance backend
+
+    - name: microservices
+      stack: [docker, kubernetes, grpc]
+      description: Microservices architecture
+
+    - name: cli
+      stack: [rust]
+      description: Command-line tool
+
+    - name: library
+      stack: [typescript]
+      description: Reusable library/package
+
+# ============================================================================
+# LANGUAGE SUPPORT
+# ============================================================================
+
+languages:
+  systems:
+    - rust
+    - c
+    - cpp
+    - go
+    - zig
+
+  web_backend:
+    - python
+    - nodejs
+    - java
+    - csharp
+    - ruby
+    - php
+
+  web_frontend:
+    - typescript
+    - javascript
+    - html
+    - css
+    - scss
+
+  mobile:
+    - swift
+    - kotlin
+    - dart
+    - react-native
+
+  data:
+    - python
+    - r
+    - julia
+    - sql
+
+  scripting:
+    - bash
+    - powershell
+    - python
+    - lua
+
+  functional:
+    - haskell
+    - elixir
+    - clojure
+    - fsharp
+    - ocaml
+
+  config:
+    - yaml
+    - json
+    - toml
+    - hcl
+    - dhall
+
+# ============================================================================
+# METRICS & ANALYTICS
+# ============================================================================
+
+metrics:
+  enabled: true
+
+  collect:
+    - token_usage
+    - agent_runtime
+    - task_completion
+    - error_rate
+    - user_approvals
+
+  budgets:
+    tokens:
+      warning_threshold: 80%
+      hard_limit: 100000  # per session
+    time:
+      warning_threshold: 3600  # seconds
+      hard_limit: 14400  # 4 hours
+
+  reporting:
+    format: markdown
+    location: .unagagory/reports
+    auto_generate: true
+
+# ============================================================================
+# LOGGING
+# ============================================================================
+
+logging:
+  level: info  # debug, info, warn, error
+  format: structured
+  location: .unagagory/logs
+
+  outputs:
+    - console
+    - file
+
+  retention:
+    days: 30
+    max_size: 100MB
+
+# ============================================================================
+# SECURITY
+# ============================================================================
+
+security:
+  secrets:
+    never_log: true
+    patterns:
+      - "api[_-]?key"
+      - "secret"
+      - "password"
+      - "token"
+      - "credential"
+
+  allowed_domains:
+    - github.com
+    - gitlab.com
+    - npmjs.com
+    - pypi.org
+    - crates.io
+
+  blocked_commands:
+    - "rm -rf /"
+    - "format c:"
+    - "> /dev/sda"
+
+# ============================================================================
+# FEATURE FLAGS
+# ============================================================================
+
+features:
+  experimental:
+    inter_llm_orchestration: false
+    vector_memory: false
+    auto_scaling: false
+
+  stable:
+    parallel_agents: true
+    memory_persistence: true
+    checkpoint_recovery: true
+    progress_tracking: true

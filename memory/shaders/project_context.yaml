@@ -1,0 +1,391 @@
+# Project Context Memory Shader
+# Persists project-wide context across sessions
+
+shader:
+  id: project-context
+  name: Project Context Shader
+  version: "1.0.0"
+  layer: L3  # Cold memory
+  persistence: permanent
+
+# ============================================================================
+# SCHEMA
+# ============================================================================
+
+schema:
+  project:
+    type: object
+    properties:
+      id:
+        type: string
+        description: Unique project identifier
+      name:
+        type: string
+        description: Project name
+      description:
+        type: string
+        description: Project description
+      created_at:
+        type: datetime
+        description: Creation timestamp
+      updated_at:
+        type: datetime
+        description: Last update timestamp
+      status:
+        type: enum
+        values: [planning, in_progress, review, deployed, archived]
+
+  requirements:
+    type: object
+    properties:
+      functional:
+        type: array
+        items:
+          type: object
+          properties:
+            id: string
+            description: string
+            priority: enum[must, should, could]
+            status: enum[pending, implemented, tested, deployed]
+      technical:
+        type: array
+        items:
+          type: object
+          properties:
+            id: string
+            description: string
+            category: string
+            status: enum[pending, implemented, tested]
+      constraints:
+        type: array
+        items:
+          type: object
+          properties:
+            id: string
+            description: string
+            type: enum[technical, business, resource]
+
+  architecture:
+    type: object
+    properties:
+      type:
+        type: string
+        description: Architecture pattern (monolith, microservices, etc.)
+      components:
+        type: array
+        items:
+          type: object
+          properties:
+            name: string
+            purpose: string
+            technology: string
+            dependencies: array
+      decisions:
+        type: array
+        items:
+          type: object
+          properties:
+            id: string
+            title: string
+            context: string
+            decision: string
+            consequences: array
+            date: datetime
+
+  tech_stack:
+    type: object
+    properties:
+      frontend:
+        type: object
+        properties:
+          framework: string
+          language: string
+          styling: string
+          state_management: string
+      backend:
+        type: object
+        properties:
+          framework: string
+          language: string
+          orm: string
+      database:
+        type: object
+        properties:
+          primary: string
+          cache: string
+      infrastructure:
+        type: object
+        properties:
+          hosting: string
+          ci_cd: string
+          containers: string
+
+  progress:
+    type: object
+    properties:
+      current_phase:
+        type: string
+      completed_phases:
+        type: array
+        items: string
+      pending_tasks:
+        type: array
+        items:
+          type: object
+          properties:
+            id: string
+            description: string
+            assigned_agent: string
+            priority: number
+      completed_tasks:
+        type: array
+        items:
+          type: object
+          properties:
+            id: string
+            description: string
+            completed_by: string
+            completed_at: datetime
+      blockers:
+        type: array
+        items:
+          type: object
+          properties:
+            id: string
+            description: string
+            severity: enum[low, medium, high, critical]
+            resolution: string
+
+  agents:
+    type: object
+    properties:
+      spawned:
+        type: array
+        items:
+          type: object
+          properties:
+            agent_id: string
+            agent_type: string
+            spawned_at: datetime
+            task: string
+      active:
+        type: array
+        items: string
+      completed:
+        type: array
+        items:
+          type: object
+          properties:
+            agent_id: string
+            tasks_completed: number
+            terminated_at: datetime
+
+  files:
+    type: object
+    properties:
+      created:
+        type: array
+        items:
+          type: object
+          properties:
+            path: string
+            created_by: string
+            created_at: datetime
+      modified:
+        type: array
+        items:
+          type: object
+          properties:
+            path: string
+            modified_by: string
+            modified_at: datetime
+            summary: string
+
+  approvals:
+    type: object
+    properties:
+      granted:
+        type: array
+        items:
+          type: object
+          properties:
+            permission: string
+            scope: string
+            granted_at: datetime
+      pending:
+        type: array
+        items:
+          type: object
+          properties:
+            permission: string
+            requested_by: string
+            requested_at: datetime
+
+# ============================================================================
+# OPERATIONS
+# ============================================================================
+
+operations:
+  initialize:
+    description: Initialize new project context
+    parameters:
+      name: string
+      description: string
+    template: |
+      project:
+        id: ${generate_uuid()}
+        name: ${name}
+        description: ${description}
+        created_at: ${now()}
+        updated_at: ${now()}
+        status: planning
+      requirements:
+        functional: []
+        technical: []
+        constraints: []
+      architecture: {}
+      tech_stack: {}
+      progress:
+        current_phase: discovery
+        completed_phases: []
+        pending_tasks: []
+        completed_tasks: []
+        blockers: []
+      agents:
+        spawned: []
+        active: []
+        completed: []
+      files:
+        created: []
+        modified: []
+      approvals:
+        granted: []
+        pending: []
+
+  update_phase:
+    description: Update current project phase
+    parameters:
+      phase: string
+    actions:
+      - set: progress.completed_phases += [progress.current_phase]
+      - set: progress.current_phase = ${phase}
+      - set: project.updated_at = ${now()}
+
+  add_requirement:
+    description: Add a requirement
+    parameters:
+      type: enum[functional, technical]
+      requirement: object
+    actions:
+      - append: requirements.${type} += ${requirement}
+      - set: project.updated_at = ${now()}
+
+  update_task_status:
+    description: Update task status
+    parameters:
+      task_id: string
+      status: enum[pending, in_progress, completed, blocked]
+    actions:
+      - if: status == completed
+        then:
+          - move: progress.pending_tasks[id=${task_id}] -> progress.completed_tasks
+          - set: progress.completed_tasks[-1].completed_at = ${now()}
+      - set: project.updated_at = ${now()}
+
+  register_agent:
+    description: Register a spawned agent
+    parameters:
+      agent_id: string
+      agent_type: string
+      task: string
+    actions:
+      - append: agents.spawned += { agent_id, agent_type, spawned_at: ${now()}, task }
+      - append: agents.active += ${agent_id}
+      - set: project.updated_at = ${now()}
+
+  complete_agent:
+    description: Mark agent as completed
+    parameters:
+      agent_id: string
+      tasks_completed: number
+    actions:
+      - remove: agents.active -= ${agent_id}
+      - append: agents.completed += { agent_id, tasks_completed, terminated_at: ${now()} }
+
+  record_file:
+    description: Record file creation/modification
+    parameters:
+      path: string
+      action: enum[created, modified]
+      by: string
+      summary: string
+    actions:
+      - if: action == created
+        then:
+          - append: files.created += { path, created_by: ${by}, created_at: ${now()} }
+      - else:
+        - append: files.modified += { path, modified_by: ${by}, modified_at: ${now()}, summary }
+
+# ============================================================================
+# STORAGE
+# ============================================================================
+
+storage:
+  format: yaml
+  location: .unagagory/memory/project_context.yaml
+  backup:
+    enabled: true
+    interval: 3600  # hourly
+    location: .unagagory/memory/backups/
+    retention: 30  # days
+
+# ============================================================================
+# INDEXING
+# ============================================================================
+
+indexing:
+  enabled: true
+  fields:
+    - project.name
+    - project.status
+    - progress.current_phase
+    - requirements.functional[].id
+    - requirements.technical[].id
+    - architecture.decisions[].title
+
+# ============================================================================
+# QUERIES
+# ============================================================================
+
+queries:
+  get_project_summary:
+    description: Get project summary
+    returns: |
+      name: ${project.name}
+      status: ${project.status}
+      phase: ${progress.current_phase}
+      tasks_pending: ${count(progress.pending_tasks)}
+      tasks_completed: ${count(progress.completed_tasks)}
+      active_agents: ${count(agents.active)}
+
+  get_pending_tasks:
+    description: Get all pending tasks
+    returns: progress.pending_tasks
+
+  get_active_agents:
+    description: Get currently active agents
+    returns: |
+      ${for agent in agents.spawned where agent.agent_id in agents.active:
+        id: ${agent.agent_id}
+        type: ${agent.agent_type}
+        task: ${agent.task}
+        running_for: ${now() - agent.spawned_at}
+      }
+
+  get_blockers:
+    description: Get current blockers
+    returns: progress.blockers
+
+  get_approvals_needed:
+    description: Get pending approvals
+    returns: approvals.pending

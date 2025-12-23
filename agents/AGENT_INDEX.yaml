@@ -1,0 +1,397 @@
+# UNAGAGORY Agent Index
+# Complete registry of all available agents
+
+version: "1.0.0"
+last_updated: "2025-01-01"
+
+# ============================================================================
+# AGENT TIERS
+# ============================================================================
+
+tier_definitions:
+  tier_0:
+    name: Foundation
+    description: Base infrastructure agents
+    agents: [llm_interface]
+
+  tier_1:
+    name: Interpreters
+    description: Prompt and request interpreters
+    agents: [prompt_interpreter]
+
+  tier_2:
+    name: Planners
+    description: Scope and planning agents
+    agents: [scope_analyzer]
+
+  tier_3:
+    name: Designers
+    description: Architecture designers
+    agents: [system_architect, frontend_architect, backend_architect, database_architect]
+
+  tier_4:
+    name: Implementers
+    description: Code generation and building
+    agents: [code_generator, backend_builder, frontend_builder, database_builder]
+
+  tier_5:
+    name: Specialists
+    description: Domain specialists
+    agents: [documentation_writer, license_manager, opensource_finder, budget_analyst]
+
+  tier_6:
+    name: Quality
+    description: Testing and quality agents
+    agents: [unit_tester, integration_tester, e2e_tester, code_reviewer]
+
+  tier_7:
+    name: Operations
+    description: DevOps and operations
+    agents: [cicd_designer, environment_preparer]
+
+  tier_8:
+    name: Security
+    description: Security agents
+    agents: [security_sentinel]
+
+  tier_9:
+    name: Management
+    description: Project and resource management
+    agents: [memory_manager, permission_manager, quality_controller]
+
+  tier_10:
+    name: Orchestration
+    description: Supreme orchestration
+    agents: [master_orchestrator]
+
+# ============================================================================
+# AGENT REGISTRY
+# ============================================================================
+
+agents:
+
+  # ---------------------------------------------------------------------------
+  # CORE AGENTS
+  # ---------------------------------------------------------------------------
+
+  master_orchestrator:
+    id: master-orchestrator
+    name: MasterOrchestrator
+    tier: 10
+    path: core/master_orchestrator.yaml
+    description: Supreme coordinator of all agents and workflows
+    capabilities:
+      - Spawn and terminate agents
+      - Manage workflows
+      - Allocate resources
+      - Handle escalations
+    triggers: [session_start, workflow_start, escalation]
+
+  prompt_interpreter:
+    id: prompt-interpreter
+    name: PromptInterpreter
+    tier: 1
+    path: core/prompt_interpreter.yaml
+    description: Analyzes user requests and extracts requirements
+    capabilities:
+      - Parse natural language
+      - Extract requirements
+      - Identify ambiguities
+      - Generate clarifications
+    triggers: [user_input, requirement_analysis]
+
+  memory_manager:
+    id: memory-manager
+    name: MemoryManager
+    tier: 9
+    path: core/memory_manager.yaml
+    description: Manages cross-session memory persistence
+    capabilities:
+      - Store context
+      - Retrieve history
+      - Index information
+      - Manage memory lifecycle
+    triggers: [context_change, session_end, memory_request]
+
+  permission_manager:
+    id: permission-manager
+    name: PermissionManager
+    tier: 9
+    path: core/permission_manager.yaml
+    description: Controls permission levels and escalations
+    capabilities:
+      - Validate permissions
+      - Handle escalations
+      - Audit actions
+      - Enforce guardrails
+    triggers: [permission_check, escalation_request]
+
+  # ---------------------------------------------------------------------------
+  # ARCHITECT AGENTS
+  # ---------------------------------------------------------------------------
+
+  system_architect:
+    id: system-architect
+    name: SystemArchitect
+    tier: 3
+    path: architects/system_architect.yaml
+    description: Designs overall system architecture
+    capabilities:
+      - Design architecture
+      - Create component diagrams
+      - Document decisions
+      - Evaluate trade-offs
+    triggers: [architecture_needed, design_review]
+
+  frontend_architect:
+    id: frontend-architect
+    name: FrontendArchitect
+    tier: 4
+    path: architects/frontend_architect.yaml
+    description: Designs frontend architecture and UI systems
+    capabilities:
+      - Design component systems
+      - Create UI/UX guidelines
+      - Optimize performance
+      - Ensure accessibility
+    triggers: [frontend_design_needed, ui_architecture_request]
+
+  backend_architect:
+    id: backend-architect
+    name: BackendArchitect
+    tier: 4
+    path: architects/backend_architect.yaml
+    description: Designs backend systems and APIs
+    capabilities:
+      - Design API architecture
+      - Create service boundaries
+      - Design authentication
+      - Plan caching strategies
+    triggers: [backend_design_needed, api_architecture_request]
+
+  database_architect:
+    id: database-architect
+    name: DatabaseArchitect
+    tier: 4
+    path: architects/database_architect.yaml
+    description: Designs database schemas and data strategies
+    capabilities:
+      - Design schemas
+      - Optimize queries
+      - Plan migrations
+      - Ensure data integrity
+    triggers: [database_design_needed, schema_change_request]
+
+  # ---------------------------------------------------------------------------
+  # BUILDER AGENTS
+  # ---------------------------------------------------------------------------
+
+  code_generator:
+    id: code-generator
+    name: CodeGenerator
+    tier: 4
+    path: builders/code_generator.yaml
+    description: Generates production-quality code
+    capabilities:
+      - Generate code
+      - Follow conventions
+      - Handle errors
+      - Write documentation
+    triggers: [code_needed, implementation_request]
+
+  # ---------------------------------------------------------------------------
+  # REVIEWER AGENTS
+  # ---------------------------------------------------------------------------
+
+  code_reviewer:
+    id: code-reviewer
+    name: CodeReviewer
+    tier: 6
+    path: reviewers/code_reviewer.yaml
+    description: Reviews code for quality and issues
+    capabilities:
+      - Review code quality
+      - Find bugs
+      - Suggest improvements
+      - Enforce standards
+    triggers: [code_review_needed, pr_created]
+
+  quality_controller:
+    id: quality-controller
+    name: QualityController
+    tier: 7
+    path: reviewers/quality_controller.yaml
+    description: Ensures overall quality standards
+    capabilities:
+      - Assess quality
+      - Enforce standards
+      - Generate reports
+      - Gate releases
+    triggers: [gate_check_requested, release_preparation]
+
+  # ---------------------------------------------------------------------------
+  # TESTER AGENTS
+  # ---------------------------------------------------------------------------
+
+  unit_tester:
+    id: unit-tester
+    name: UnitTester
+    tier: 5
+    path: testers/unit_tester.yaml
+    description: Creates and runs unit tests
+    capabilities:
+      - Create unit tests
+      - Run test suites
+      - Generate coverage
+      - Test edge cases
+    triggers: [code_complete, test_needed]
+
+  integration_tester:
+    id: integration-tester
+    name: IntegrationTester
+    tier: 5
+    path: testers/integration_tester.yaml
+    description: Creates integration tests
+    capabilities:
+      - Create integration tests
+      - Test API endpoints
+      - Test database operations
+      - Test services
+    triggers: [api_implemented, service_complete]
+
+  e2e_tester:
+    id: e2e-tester
+    name: E2ETester
+    tier: 5
+    path: testers/e2e_tester.yaml
+    description: Creates end-to-end tests
+    capabilities:
+      - Create E2E scenarios
+      - Automate browser tests
+      - Visual regression testing
+      - Cross-browser testing
+    triggers: [feature_complete, deploy_request]
+
+  # ---------------------------------------------------------------------------
+  # INFRASTRUCTURE AGENTS
+  # ---------------------------------------------------------------------------
+
+  cicd_designer:
+    id: cicd-designer
+    name: CICDDesigner
+    tier: 6
+    path: infrastructure/cicd_designer.yaml
+    description: Designs CI/CD pipelines
+    capabilities:
+      - Design pipelines
+      - Configure builds
+      - Set up deployments
+      - Manage environments
+    triggers: [project_setup, cicd_request]
+
+  # ---------------------------------------------------------------------------
+  # SECURITY AGENTS
+  # ---------------------------------------------------------------------------
+
+  security_sentinel:
+    id: security-sentinel
+    name: SecuritySentinel
+    tier: 8
+    path: security/security_sentinel.yaml
+    description: Monitors and enforces security
+    capabilities:
+      - Scan vulnerabilities
+      - Detect secrets
+      - Review security
+      - Block unsafe actions
+    triggers: [code_generated, pr_created, deploy_request]
+
+  # ---------------------------------------------------------------------------
+  # SPECIALIST AGENTS
+  # ---------------------------------------------------------------------------
+
+  documentation_writer:
+    id: documentation-writer
+    name: DocumentationWriter
+    tier: 5
+    path: specialists/documentation_writer.yaml
+    description: Creates comprehensive documentation
+    capabilities:
+      - Write API docs
+      - Create guides
+      - Generate README
+      - Write tech specs
+    triggers: [documentation_needed, code_complete]
+
+  license_manager:
+    id: license-manager
+    name: LicenseManager
+    tier: 6
+    path: specialists/license_manager.yaml
+    description: Manages software licenses
+    capabilities:
+      - Analyze licenses
+      - Check compatibility
+      - Generate reports
+      - Manage attribution
+    triggers: [dependency_added, compliance_check]
+
+  opensource_finder:
+    id: opensource-finder
+    name: OpenSourceFinder
+    tier: 5
+    path: specialists/opensource_finder.yaml
+    description: Finds open source solutions
+    capabilities:
+      - Search libraries
+      - Evaluate packages
+      - Compare alternatives
+      - Check security
+    triggers: [library_needed, evaluation_requested]
+
+  budget_analyst:
+    id: budget-analyst
+    name: BudgetAnalyst
+    tier: 6
+    path: specialists/budget_analyst.yaml
+    description: Manages token/resource budgets
+    capabilities:
+      - Track usage
+      - Predict consumption
+      - Optimize allocation
+      - Report efficiency
+    triggers: [continuous, threshold_breach]
+
+# ============================================================================
+# AGENT SELECTION GUIDE
+# ============================================================================
+
+selection_guide:
+  by_task:
+    "interpret user request": prompt_interpreter
+    "design architecture": system_architect
+    "design frontend": frontend_architect
+    "design backend": backend_architect
+    "design database": database_architect
+    "generate code": code_generator
+    "review code": code_reviewer
+    "write unit tests": unit_tester
+    "write integration tests": integration_tester
+    "write e2e tests": e2e_tester
+    "setup ci/cd": cicd_designer
+    "security scan": security_sentinel
+    "write documentation": documentation_writer
+    "check licenses": license_manager
+    "find library": opensource_finder
+    "track budget": budget_analyst
+    "quality check": quality_controller
+
+  by_workflow_phase:
+    discovery: [prompt_interpreter]
+    architecture: [system_architect, frontend_architect, backend_architect, database_architect]
+    setup: [cicd_designer]
+    implementation: [code_generator]
+    testing: [unit_tester, integration_tester, e2e_tester]
+    review: [code_reviewer, security_sentinel, quality_controller]
+    documentation: [documentation_writer]
+    deployment: [cicd_designer]
