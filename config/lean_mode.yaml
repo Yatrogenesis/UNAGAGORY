@@ -1,0 +1,266 @@
+# Lean Mode Configuration
+# Minimal token usage operating mode
+
+lean_mode:
+  id: lean-mode
+  name: Lean Mode Configuration
+  version: "1.0.0"
+
+# ============================================================================
+# ACTIVATION
+# ============================================================================
+
+activation:
+  manual:
+    command: "/lean"
+    description: User explicitly activates lean mode
+
+  automatic:
+    conditions:
+      - budget_remaining < 20%
+      - task_complexity < 4
+      - user_preference: cost_sensitive
+
+  per_task:
+    auto_lean_tasks:
+      - formatting
+      - typo_fixes
+      - simple_refactors
+      - boilerplate_generation
+      - status_queries
+
+# ============================================================================
+# MODEL ROUTING
+# ============================================================================
+
+routing:
+  # Task complexity scoring (1-10)
+  complexity_scoring:
+    factors:
+      - files_involved: 1 point per file
+      - logic_complexity: 1-5 points
+      - security_sensitivity: 0-3 points
+      - novelty: 0-2 points
+
+  thresholds:
+    haiku: complexity <= 3
+    sonnet: complexity 4-7
+    opus: complexity >= 8 OR security_critical
+
+  overrides:
+    always_opus:
+      - authentication_implementation
+      - payment_processing
+      - data_encryption
+      - architecture_decisions
+
+    always_haiku:
+      - code_formatting
+      - comment_generation
+      - simple_translations
+      - status_reporting
+
+# ============================================================================
+# COMMUNICATION COMPRESSION
+# ============================================================================
+
+communication:
+  # Abbreviated codes for common messages
+  codes:
+    # Status codes
+    OK: "Success"
+    ERR: "Error"
+    WAIT: "Awaiting input"
+    DONE: "Task complete"
+    SKIP: "Skipping"
+    RETRY: "Retrying"
+
+    # Action codes
+    READ: "Reading file"
+    WRITE: "Writing file"
+    EXEC: "Executing"
+    REVIEW: "Reviewing"
+    TEST: "Testing"
+    DEPLOY: "Deploying"
+
+    # Request codes
+    REQ: "Request"
+    ESC: "Escalate"
+    APR: "Approval needed"
+    CLR: "Clarification needed"
+
+    # Result codes
+    PASS: "Tests passing"
+    FAIL: "Tests failing"
+    WARN: "Warnings found"
+    CRIT: "Critical issue"
+
+  # Reference format
+  references:
+    file: "F:{index}"           # F:42
+    agent: "A:{id}"             # A:CG
+    decision: "D:{id}"          # D:ADR-003
+    task: "T:{id}"              # T:IMPL-001
+    error: "E:{code}"           # E:VAL-001
+
+  # Message templates
+  templates:
+    task_start: ">>>{task_code}"
+    task_end: "<<<{status}"
+    handoff: "{from}>{to}:{ref}"
+    status: "[{agent}:{status}]"
+
+# ============================================================================
+# CONTEXT REDUCTION
+# ============================================================================
+
+context:
+  # What to include in lean mode
+  include:
+    - Current task requirements (compressed)
+    - Active file signatures only
+    - Critical decisions (by reference)
+    - Error messages (codes only)
+
+  # What to exclude
+  exclude:
+    - Full file contents (use signatures)
+    - Conversation history (use summary)
+    - Exploration details
+    - Verbose explanations
+
+  # Compression levels
+  file_compression:
+    default: signatures
+    current_edit: full
+    dependencies: summary
+    unrelated: minimal
+
+  conversation_compression:
+    max_tokens: 3000
+    preserve:
+      - User decisions
+      - Approved changes
+      - Critical constraints
+    summarize_after: 5 exchanges
+
+# ============================================================================
+# AGENT BEHAVIOR
+# ============================================================================
+
+agent_behavior:
+  # Reduced agent involvement
+  skip_agents:
+    for_simple_tasks:
+      - SecuritySentinel (unless security-related)
+      - QualityController (quick check only)
+      - DocumentationWriter (defer)
+
+  # Merged responsibilities
+  merge_agents:
+    - CodeGenerator + UnitTester: Generate with inline tests
+    - CodeReviewer + QualityController: Single pass review
+
+  # Simplified workflows
+  simplified_workflows:
+    simple_fix:
+      steps:
+        - Identify issue
+        - Fix
+        - Verify
+      skip:
+        - Full architecture review
+        - Comprehensive documentation
+        - Multi-stage approval
+
+# ============================================================================
+# OUTPUT FORMATTING
+# ============================================================================
+
+output:
+  # Terse responses
+  format:
+    status_updates: single_line
+    explanations: bullet_points
+    code_comments: minimal
+    error_messages: code_only
+
+  # Suppress verbose output
+  suppress:
+    - Progress narratives
+    - Thinking explanations
+    - Alternative considerations
+    - Historical context
+
+  # Example transformations
+  examples:
+    normal: |
+      I have completed analyzing the authentication module. After reviewing
+      the code, I found that the password validation function does not properly
+      check for special characters. I recommend updating the regex pattern
+      in the validatePassword function located at line 45 of auth.utils.ts.
+
+    lean: |
+      AUTH:validatePassword@45 - Missing special char check. Fix: Update regex.
+
+# ============================================================================
+# CACHING
+# ============================================================================
+
+caching:
+  # Aggressive caching in lean mode
+  cache_everything:
+    - Boilerplate code
+    - Common patterns
+    - Standard configurations
+    - Repeated queries
+
+  # Cache key patterns
+  patterns:
+    boilerplate: "BP:{type}:{framework}"
+    pattern: "PT:{name}:{variant}"
+    config: "CF:{type}:{env}"
+
+  # Reuse threshold
+  reuse_on_similarity: 0.9  # 90% similar = cache hit
+
+# ============================================================================
+# METRICS
+# ============================================================================
+
+metrics:
+  track:
+    - Tokens per task (vs normal mode)
+    - Model routing decisions
+    - Cache hit rate
+    - Compression ratio
+
+  targets:
+    token_reduction: "> 70%"
+    cache_hit_rate: "> 40%"
+    task_quality: "> 95% (vs normal)"
+
+# ============================================================================
+# QUALITY SAFEGUARDS
+# ============================================================================
+
+safeguards:
+  # Never compromise on
+  always_full_quality:
+    - Security-sensitive code
+    - Financial calculations
+    - User data handling
+    - Production deployments
+
+  # Minimum standards
+  minimum_review:
+    - Syntax validation
+    - Critical bug check
+    - Security scan (quick)
+
+  # Escalation triggers
+  escalate_to_normal:
+    - User requests detail
+    - Error rate increases
+    - Complexity exceeds threshold
+    - Quality concerns detected

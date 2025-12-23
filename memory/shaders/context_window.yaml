@@ -1,0 +1,347 @@
+# Context Window Management Shader
+# Tracks and optimizes context window usage
+
+shader:
+  id: context-window
+  name: Context Window Shader
+  version: "1.0.0"
+  layer: L1  # Hot memory - real-time tracking
+  persistence: session
+
+# ============================================================================
+# SCHEMA
+# ============================================================================
+
+schema:
+  capacity:
+    type: object
+    properties:
+      total:
+        type: number
+        description: Total context window capacity
+      reserved_for_output:
+        type: number
+        description: Reserved for model output
+      usable:
+        type: number
+        description: Usable for input context
+
+  usage:
+    type: object
+    properties:
+      current:
+        type: number
+        description: Current tokens in context
+      percentage:
+        type: number
+        description: Usage percentage
+      status:
+        type: enum
+        values: [healthy, warning, critical, emergency]
+
+  breakdown:
+    type: object
+    properties:
+      system_prompt:
+        type: number
+      active_task:
+        type: number
+      current_files:
+        type: number
+      architecture:
+        type: number
+      conversation:
+        type: number
+      memory_shaders:
+        type: number
+      reference_data:
+        type: number
+
+  compression_history:
+    type: array
+    items:
+      type: object
+      properties:
+        timestamp: datetime
+        category: string
+        before_tokens: number
+        after_tokens: number
+        technique: string
+        preserved: array
+
+  eviction_queue:
+    type: array
+    items:
+      type: object
+      properties:
+        category: string
+        priority: number  # Lower = evict first
+        tokens: number
+        last_accessed: datetime
+
+  cached_summaries:
+    type: map
+    key: string  # file_path or content_id
+    value:
+      type: object
+      properties:
+        full_tokens: number
+        summary_tokens: number
+        summary: string
+        level: enum[signatures, summary, minimal]
+        created_at: datetime
+
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+
+config:
+  thresholds:
+    healthy: 0.60      # < 60% - all good
+    warning: 0.75      # 75% - start monitoring
+    critical: 0.85     # 85% - compress actively
+    emergency: 0.95    # 95% - emergency measures
+
+  output_reserve:
+    default: 32000     # Reserve for generation
+    complex_task: 64000
+    simple_task: 16000
+
+  compression_targets:
+    conversation:
+      max_tokens: 15000
+      summarize_after: 20000
+
+    file_contents:
+      active_file: full
+      adjacent_files: signatures
+      module_files: summary
+      other_files: minimal
+
+    exploration:
+      keep_last: 5      # Keep last 5 exploration results
+      summarize_rest: true
+
+# ============================================================================
+# OPERATIONS
+# ============================================================================
+
+operations:
+  initialize:
+    description: Initialize context window tracking
+    parameters:
+      model_context_size: number
+      output_reserve: number
+    template: |
+      capacity:
+        total: ${model_context_size}
+        reserved_for_output: ${output_reserve}
+        usable: ${model_context_size - output_reserve}
+      usage:
+        current: 0
+        percentage: 0
+        status: healthy
+      breakdown:
+        system_prompt: 0
+        active_task: 0
+        current_files: 0
+        architecture: 0
+        conversation: 0
+        memory_shaders: 0
+        reference_data: 0
+      compression_history: []
+      eviction_queue: []
+      cached_summaries: {}
+
+  update_usage:
+    description: Update context usage metrics
+    parameters:
+      category: string
+      tokens: number
+    actions:
+      - set: breakdown.${category} = ${tokens}
+      - set: usage.current = sum(breakdown.*)
+      - set: usage.percentage = usage.current / capacity.usable
+      - call: update_status
+
+  update_status:
+    description: Update status based on usage
+    actions:
+      - if: usage.percentage < config.thresholds.healthy
+        then:
+          - set: usage.status = healthy
+      - elif: usage.percentage < config.thresholds.warning
+        then:
+          - set: usage.status = warning
+      - elif: usage.percentage < config.thresholds.critical
+        then:
+          - set: usage.status = critical
+          - call: trigger_compression soft
+      - else:
+          - set: usage.status = emergency
+          - call: trigger_compression aggressive
+
+  trigger_compression:
+    description: Trigger compression based on mode
+    parameters:
+      mode: enum[soft, aggressive, emergency]
+    actions:
+      - if: mode == soft
+        then:
+          - call: compress_conversation target=15000
+          - call: compress_old_files
+      - elif: mode == aggressive
+        then:
+          - call: compress_conversation target=8000
+          - call: compress_all_files level=signatures
+          - call: evict_low_priority
+      - else:  # emergency
+        - call: compress_conversation target=3000
+        - call: compress_all_files level=minimal
+        - call: evict_all_non_essential
+        - call: notify_user "Context emergency - some context lost"
+
+  add_to_eviction_queue:
+    description: Add content to eviction queue
+    parameters:
+      category: string
+      tokens: number
+      priority: number  # 1-10, lower evicted first
+    actions:
+      - append: eviction_queue += {
+          category: ${category},
+          priority: ${priority},
+          tokens: ${tokens},
+          last_accessed: ${now()}
+        }
+      - sort: eviction_queue by priority asc, last_accessed asc
+
+  evict_low_priority:
+    description: Evict lowest priority content
+    parameters:
+      target_reduction: number
+    actions:
+      - set: evicted = 0
+      - while: evicted < ${target_reduction} and eviction_queue.length > 0
+        do:
+          - set: item = eviction_queue.shift()
+          - call: evict_content category=${item.category}
+          - set: evicted += ${item.tokens}
+          - append: compression_history += {
+              timestamp: ${now()},
+              category: ${item.category},
+              before_tokens: ${item.tokens},
+              after_tokens: 0,
+              technique: eviction,
+              preserved: []
+            }
+
+  cache_summary:
+    description: Cache a content summary
+    parameters:
+      content_id: string
+      full_tokens: number
+      summary: string
+      summary_tokens: number
+      level: string
+    actions:
+      - set: cached_summaries[${content_id}] = {
+          full_tokens: ${full_tokens},
+          summary_tokens: ${summary_tokens},
+          summary: ${summary},
+          level: ${level},
+          created_at: ${now()}
+        }
+
+  get_cached_summary:
+    description: Get cached summary if available
+    parameters:
+      content_id: string
+    returns: cached_summaries[${content_id}] or null
+
+  get_status_report:
+    description: Get context window status report
+    returns: |
+      Context Window Status:
+      ├─ Capacity: ${capacity.usable} tokens
+      ├─ Usage: ${usage.current} (${usage.percentage * 100}%)
+      ├─ Status: ${usage.status}
+      └─ Breakdown:
+         ├─ System: ${breakdown.system_prompt}
+         ├─ Task: ${breakdown.active_task}
+         ├─ Files: ${breakdown.current_files}
+         ├─ Architecture: ${breakdown.architecture}
+         ├─ Conversation: ${breakdown.conversation}
+         └─ Other: ${breakdown.reference_data}
+
+# ============================================================================
+# COMPRESSION TEMPLATES
+# ============================================================================
+
+compression_templates:
+  conversation:
+    strategy: semantic_merge
+    preserve:
+      - All user decisions
+      - Approved designs
+      - Critical constraints
+      - Error resolutions
+    summarize:
+      - Exploration discussions
+      - Implementation details (keep outcome)
+      - Q&A (keep answers only)
+    evict:
+      - Superseded proposals
+      - Rejected options details
+      - Verbose error traces
+
+  code_file:
+    levels:
+      full:
+        compression: 0%
+        includes: everything
+
+      signatures:
+        compression: 80-90%
+        includes:
+          - Imports
+          - Class/function signatures
+          - Type definitions
+          - Key comments
+        excludes:
+          - Function bodies
+          - Implementation details
+
+      summary:
+        compression: 95%
+        includes:
+          - File purpose
+          - Main exports
+          - Dependencies count
+
+      minimal:
+        compression: 99%
+        includes:
+          - File path
+          - One-line purpose
+
+# ============================================================================
+# ALERTS
+# ============================================================================
+
+alerts:
+  warning:
+    threshold: 0.75
+    message: "Context at 75% - monitoring"
+    action: log
+
+  critical:
+    threshold: 0.85
+    message: "Context at 85% - compressing"
+    action: compress_soft
+
+  emergency:
+    threshold: 0.95
+    message: "Context at 95% - emergency compression"
+    action: compress_aggressive
+    notify_user: true

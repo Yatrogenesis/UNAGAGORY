@@ -50,14 +50,14 @@ tier_definitions:
     agents: [cicd_designer, environment_preparer]
 
   tier_8:
-    name: Security
-    description: Security agents
-    agents: [security_sentinel]
+    name: Security & Optimization
+    description: Security and resource optimization agents
+    agents: [security_sentinel, token_optimizer]
 
   tier_9:
     name: Management
     description: Project and resource management
-    agents: [memory_manager, permission_manager, quality_controller]
+    agents: [memory_manager, permission_manager, quality_controller, context_compressor]
 
   tier_10:
     name: Orchestration
@@ -125,6 +125,34 @@ agents:
       - Audit actions
       - Enforce guardrails
     triggers: [permission_check, escalation_request]
+
+  context_compressor:
+    id: context-compressor
+    name: ContextCompressor
+    tier: 9
+    path: core/context_compressor.yaml
+    description: Manages context window for massive projects
+    capabilities:
+      - Compress conversation history
+      - Summarize code files hierarchically
+      - Create sliding window context
+      - Evict low-priority information
+      - Generate focused context packages
+    triggers: [context_threshold_reached, large_file_load, agent_task_start]
+
+  token_optimizer:
+    id: token-optimizer
+    name: TokenOptimizer
+    tier: 8
+    path: core/token_optimizer.yaml
+    description: Minimizes token usage while maintaining quality
+    capabilities:
+      - Route tasks to optimal models
+      - Enable lean mode operation
+      - Cache common patterns
+      - Compress agent communication
+      - Track and reduce waste
+    triggers: [task_start, budget_threshold, agent_communication]
 
   # ---------------------------------------------------------------------------
   # ARCHITECT AGENTS
@@ -385,6 +413,9 @@ selection_guide:
     "find library": opensource_finder
     "track budget": budget_analyst
     "quality check": quality_controller
+    "compress context": context_compressor
+    "optimize tokens": token_optimizer
+    "enable lean mode": token_optimizer
 
   by_workflow_phase:
     discovery: [prompt_interpreter]
@@ -395,3 +426,20 @@ selection_guide:
     review: [code_reviewer, security_sentinel, quality_controller]
     documentation: [documentation_writer]
     deployment: [cicd_designer]
+    optimization: [token_optimizer, context_compressor]
+
+  by_scale:
+    small_project:
+      active_agents: [prompt_interpreter, code_generator, unit_tester]
+      mode: normal
+    medium_project:
+      active_agents: all
+      mode: normal
+    large_project:
+      active_agents: all
+      mode: normal
+      required: [context_compressor]
+    massive_project:
+      active_agents: all
+      mode: lean
+      required: [context_compressor, token_optimizer]
